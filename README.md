@@ -1,6 +1,6 @@
 # SpriteGrid
 
-This project is vibe-coded using Gemini-2.5 pro.
+This project is partially vibe-coded using Gemini-2.5 pro.
 
 See VIBELOG.md for chat links.  
 
