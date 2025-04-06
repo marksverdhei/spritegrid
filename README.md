@@ -43,5 +43,24 @@ source .venv/bin/activate
 Run the tool from your terminal using the `main.py` script.
 
 ```bash
-python main.py [OPTIONS] <image_source>
+usage: main.py [-h] [--min-grid MIN_GRID] [-o FILENAME] [-i] [-d] image_source
+
+Detect grid in AI pixel art & create downsampled image or debug overlay.
+
+positional arguments:
+  image_source          Path to the local image file or URL of the image.
+
+options:
+  -h, --help            show this help message and exit
+  --min-grid MIN_GRID   Minimum expected grid dimension (width or height) for peak detection. (Default: 4)
+  -o FILENAME, --output FILENAME
+                        Save the output image (downsampled by default, or debug overlay if -d is used) to FILENAME.
+  -i, --show            Display the output image (downsampled by default, or debug overlay if -d is used) using the default system viewer.
+  -d, --debug           Enable debug mode: output/show a grid overlay instead of the downsampled image. Defaults to showing if -o or -i are not specified.
+```
+
+## Example  
+
+```bash
+python main.py ~/Downloads/pixel-art.png -o pixel-art.png
 ```
