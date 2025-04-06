@@ -9,7 +9,8 @@ import requests
 from PIL import Image, UnidentifiedImageError, ImageDraw
 
 # Import the detection function from the detection module
-from detection import detect_grid
+from src import main
+
 
 def load_image(image_source: str) -> Optional[Image.Image]:
     """
@@ -148,7 +149,7 @@ def handle_output(image_to_process: Image.Image, filename: Optional[str], show_f
             print(f"Error: Could not display image using default viewer. Reason: {e}", file=sys.stderr)
 
 
-def main():
+def parse_args():
     """
     Main function to parse arguments, load image, detect grid, and generate output/debug image.
     """
@@ -187,61 +188,9 @@ def main():
     # --- End Modified/New Arguments ---
 
     args = parser.parse_args()
-
-    # Info message if no primary output action selected (and not in debug mode)
-    if not args.debug and not args.output_file and not args.show:
-         print("Info: No output option (-o or -i) selected for downsampled image. Only detection results will be printed.", file=sys.stderr)
-
-
-    print(f"Loading image from: {args.image_source}")
-    image = load_image(args.image_source)
-
-    if image is None:
-        sys.exit(1)
-    print(f"Image loaded successfully ({image.width}x{image.height}, Mode: {image.mode}).")
-
-    # Call the grid detection function from the detection module
-    detected_w, detected_h = detect_grid(image, min_grid_size=args.min_grid)
-
-    # Check the results returned by detect_grid
-    if detected_w > 0 and detected_h > 0:
-        print("\n--- Result ---")
-        print(f"Detected Grid Dimensions (W x H): {detected_w} x {detected_h} pixels per grid cell")
-
-        # Estimate number of cells
-        num_cells_w = round(image.width / detected_w)
-        num_cells_h = round(image.height / detected_h)
-        # Ensure at least 1 cell if rounding leads to 0
-        num_cells_w = max(1, num_cells_w)
-        num_cells_h = max(1, num_cells_h)
-
-        print(f"Estimated Output Grid: {num_cells_w} x {num_cells_h} cells")
-        est_width = num_cells_w * detected_w
-        est_height = num_cells_h * detected_h
-        if abs(est_width - image.width) > detected_w / 2 or abs(est_height - image.height) > detected_h / 2 :
-             print(f"(Note: Estimated coverage based on cell count is {est_width}x{est_height}, original image is {image.width}x{image.height}. Check results.)")
-
-
-        # --- Handle Debug or Normal Output ---
-        if args.debug:
-            print("\n--- Debug Mode ---")
-            debug_image = draw_grid_overlay(image, detected_w, detected_h)
-            handle_output(debug_image, args.output_file, args.show, is_debug=True, default_title=f"{args.image_source} ({detected_w}x{detected_h})")
-        else:
-            # Only generate output image if requested
-            if args.output_file or args.show:
-                 print("\n--- Generating Downsampled Image ---")
-                 output_image = create_downsampled_image(image, detected_w, detected_h, num_cells_w, num_cells_h)
-                 handle_output(output_image, args.output_file, args.show, is_debug=False, default_title=f"{args.image_source} ({num_cells_w}x{num_cells_h})")
-            # If not saving or showing, we've already printed results, so we're done.
-
-        # --- End Handle Output ---
-
-    else:
-        print("\n--- Failure ---")
-        print("Could not reliably determine grid dimensions.")
-        sys.exit(1) # Exit with error code if detection failed
+    return args
 
 
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    main(args)
