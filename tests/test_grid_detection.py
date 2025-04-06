@@ -1,4 +1,4 @@
 
 
 def test_foo():
-    pass
+    import main
