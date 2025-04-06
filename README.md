@@ -6,23 +6,19 @@
 
 # spritegrid  
 
-Harness generative AI for pixel art!  
+Spritegrid is an image postprocessor for generative art. When general image generation models attempt to make pixel art, they often generate high-resolution images with janky pixels and grainy pixel colors. 
 
-Generative AI has come a long way, but general models have some issues when it comes to pixel art.  
-
-<img alt="spritegrid" height="200px" src="assets/docs/visualization.png">
+<img alt="example showing janky and grainy pixels" height="200px" src="assets/docs/visualization.png">
 
 1. Pixels can be janky and pixels can be incorrectly aligned (half-pixels etc).
 2. Pixels are grainy and don't contain a single color.
+spritegrid divides 
 
-Spritegrid converts these images into a grid and generates the pixel art in its appropriate resolution, and optionally removes background.  
+Spritegrid converts these images into a grid and generates the pixel art in its appropriate resolution:
 
-TODO: generate.
----
 
-This project is partially vibe-coded using Gemini-2.5 pro.
+<img alt="comparison before and after postprocessing" height="400px" src="assets/docs/comparison.png">
 
-See VIBELOG.md for chat links.  
 
 ---
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
