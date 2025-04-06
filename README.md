@@ -1,6 +1,6 @@
 <div align="center">
   <a href="https://github.com/marksverdhei/spritegrid">
-    <img alt="spritegrid" height="200px" src="assets/spritegrid.png">
+    <img alt="spritegrid" height="200px" src="assets/mascot-manual-upscaled.png">
   </a>
 </div>
 
