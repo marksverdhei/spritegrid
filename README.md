@@ -23,25 +23,20 @@ SpriteGrid attempts to detect the *intended* underlying grid dimensions (the wid
 
 ## Installation
 
-1.  **Prerequisites:**
-    * Python 3.7 or higher is recommended.
-    * `pip` or `uv` for installing packages.
+Prerequisites: `uv`
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```  
 
-2.  **Get the Code:** Clone this repository or download the source files (`main.py`, `detection.py`, etc.).
-    ```bash
-    git clone <repository-url> # Or download ZIP
-    cd spritegrid # Navigate to the project directory
-    ```
+```bash
+git clone https://github.com/marksverdhei/spritegrid.git
+```
 
-3.  **Install Dependencies:** Install the required Python libraries using pip or uv:
-    ```bash
-    # Using pip
-    pip install Pillow requests numpy scipy
+```bash
+uv sync
+source .venv/bin/activate
+```
 
-    # Or using uv
-    uv pip install Pillow requests numpy scipy
-    ```
-    *(Alternatively, if a `requirements.txt` or configured `pyproject.toml` is provided, use that).*
 
 ## Usage
 
