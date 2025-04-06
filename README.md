@@ -62,5 +62,5 @@ options:
 ## Example  
 
 ```bash
-python main.py ~/Downloads/pixel-art.png -o pixel-art.png
+python main.py assets/dragon.png -o pixel-art.png
 ```
