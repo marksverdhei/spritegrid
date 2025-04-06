@@ -1,4 +1,10 @@
-# SpriteGrid
+<div align="center">
+  <a href="https://github.com/marksverdhei/spritegrid">
+    <img alt="spritegrid" height="200px" src="assets/spritegrid.png">
+  </a>
+</div>
+
+# SpriteGrid  
 
 This project is partially vibe-coded using Gemini-2.5 pro.
 
