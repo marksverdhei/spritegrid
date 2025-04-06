@@ -19,6 +19,7 @@ Spritegrid converts these images into a grid and generates the pixel art in its 
 
 <img alt="comparison before and after postprocessing" height="400px" src="assets/docs/comparison.png">
 
+As you can see, it works but it is not yet flawless. If you would like to contribute, hurry before I add some lame contribution guidelines!
 
 ---
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
