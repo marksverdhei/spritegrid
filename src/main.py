@@ -8,8 +8,8 @@ from typing import Optional
 import requests
 from PIL import Image, UnidentifiedImageError, ImageDraw
 
-# Import the detection function from the detection module
-from detection import detect_grid
+from .detection import detect_grid
+
 
 def load_image(image_source: str) -> Optional[Image.Image]:
     """
@@ -33,15 +33,6 @@ def load_image(image_source: str) -> Optional[Image.Image]:
             return img
     except FileNotFoundError:
         print(f"Error: Local file not found at '{image_source}'", file=sys.stderr)
-        return None
-    except requests.exceptions.RequestException as e:
-        print(f"Error: Could not retrieve image from URL '{image_source}'. Reason: {e}", file=sys.stderr)
-        return None
-    except UnidentifiedImageError:
-        print(f"Error: Cannot identify image file. It might be corrupted or an unsupported format: '{image_source}'", file=sys.stderr)
-        return None
-    except IOError as e:
-        print(f"Error: An I/O error occurred while handling '{image_source}'. Reason: {e}", file=sys.stderr)
         return None
     except Exception as e:
         print(f"An unexpected error occurred while loading '{image_source}': {e}", file=sys.stderr)
@@ -148,45 +139,12 @@ def handle_output(image_to_process: Image.Image, filename: Optional[str], show_f
             print(f"Error: Could not display image using default viewer. Reason: {e}", file=sys.stderr)
 
 
-def main():
+def main(
+    args: argparse.Namespace,
+) -> None:
     """
     Main function to parse arguments, load image, detect grid, and generate output/debug image.
     """
-    parser = argparse.ArgumentParser(
-        description="Detect grid in AI pixel art & create downsampled image or debug overlay."
-    )
-    parser.add_argument(
-        "image_source",
-        type=str,
-        help="Path to the local image file or URL of the image."
-    )
-    parser.add_argument(
-        "--min-grid",
-        type=int,
-        default=4,
-        help="Minimum expected grid dimension (width or height) for peak detection. (Default: 4)"
-    )
-    # --- Modified/New Arguments ---
-    parser.add_argument(
-        "-o", "--output",
-        metavar="FILENAME",
-        dest="output_file",
-        type=str,
-        help="Save the output image (downsampled by default, or debug overlay if -d is used) to FILENAME."
-    )
-    parser.add_argument(
-        "-i", "--show",
-        action="store_true",
-        help="Display the output image (downsampled by default, or debug overlay if -d is used) using the default system viewer."
-    )
-    parser.add_argument(
-        "-d", "--debug",
-        action="store_true",
-        help="Enable debug mode: output/show a grid overlay instead of the downsampled image. Defaults to showing if -o or -i are not specified."
-    )
-    # --- End Modified/New Arguments ---
-
-    args = parser.parse_args()
 
     # Info message if no primary output action selected (and not in debug mode)
     if not args.debug and not args.output_file and not args.show:
@@ -241,7 +199,3 @@ def main():
         print("\n--- Failure ---")
         print("Could not reliably determine grid dimensions.")
         sys.exit(1) # Exit with error code if detection failed
-
-
-if __name__ == "__main__":
-    main()
