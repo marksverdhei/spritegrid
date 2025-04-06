@@ -1,5 +1,3 @@
-# main.py
-
 import argparse
 import io
 import sys
@@ -59,10 +57,10 @@ def draw_grid_overlay(image: Image.Image, grid_w: int, grid_h: int, color: str =
     return img_copy
 
 
-def create_downsampled_image(image: Image.Image, grid_w: int, grid_h: int, num_cells_w: int, num_cells_h: int) -> Image.Image:
+def create_downsampled_image(image: Image.Image, grid_w: int, grid_h: int, num_cells_w: int, num_cells_h: int, bit: int = 8) -> Image.Image:
     """
     Creates a new image by sampling the center pixel of each grid cell
-    from the original image.
+    from the original image and quantizing the colors.
 
     Args:
         image: The original PIL Image object.
@@ -70,6 +68,7 @@ def create_downsampled_image(image: Image.Image, grid_w: int, grid_h: int, num_c
         grid_h: The detected height of a grid cell in the original image.
         num_cells_w: The number of grid cells horizontally.
         num_cells_h: The number of grid cells vertically.
+        bit: Number of bits per color channel.
 
     Returns:
         A new PIL Image object with dimensions (num_cells_w, num_cells_h).
@@ -94,6 +93,11 @@ def create_downsampled_image(image: Image.Image, grid_w: int, grid_h: int, num_c
     new_pixels = new_img.load()
     original_width, original_height = original_image.size
 
+    max_value = 2**bit - 1
+
+    def quantize(value):
+        return round(value * max_value / 255) * 255 // max_value
+
     for y_new in range(num_cells_h):
         for x_new in range(num_cells_w):
             # Calculate center coordinates in the original image
@@ -103,8 +107,14 @@ def create_downsampled_image(image: Image.Image, grid_w: int, grid_h: int, num_c
             # Get pixel value from original image's center
             pixel_value = original_pixels[center_x, center_y]
 
-            # Set pixel value in the new image
-            new_pixels[x_new, y_new] = pixel_value
+            # Quantize pixel values
+            if isinstance(pixel_value, tuple):
+                if len(pixel_value) == 3: # RGB
+                    new_pixels[x_new, y_new] = (quantize(pixel_value[0]), quantize(pixel_value[1]), quantize(pixel_value[2]))
+                elif len(pixel_value) == 4: # RGBA
+                    new_pixels[x_new, y_new] = (quantize(pixel_value[0]), quantize(pixel_value[1]), quantize(pixel_value[2]), pixel_value[3]) # keep alpha
+            else: # Grayscale
+                new_pixels[x_new, y_new] = quantize(pixel_value)
 
     print("Downsampled image created.")
     return new_img
@@ -189,7 +199,7 @@ def main(
             # Only generate output image if requested
             if args.output_file or args.show:
                  print("\n--- Generating Downsampled Image ---")
-                 output_image = create_downsampled_image(image, detected_w, detected_h, num_cells_w, num_cells_h)
+                 output_image = create_downsampled_image(image, detected_w, detected_h, num_cells_w, num_cells_h, args.quantize)
                  handle_output(output_image, args.output_file, args.show, is_debug=False, default_title=f"{args.image_source} ({num_cells_w}x{num_cells_h})")
             # If not saving or showing, we've already printed results, so we're done.
 

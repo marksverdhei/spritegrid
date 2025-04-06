@@ -37,7 +37,14 @@ def parse_args():
         action="store_true",
         help="Enable debug mode: output/show a grid overlay instead of the downsampled image. Defaults to showing if -o or -i are not specified."
     )
-    # --- End Modified/New Arguments ---
+
+    parser.add_argument(
+        "-q", "--quantize",
+        type=int,
+        default=8,
+        help="Per-channel bit depth for quantization. If not specified, the image will not be quantized."
+    )
+
 
     args = parser.parse_args()
     return args
