@@ -46,10 +46,10 @@ source .venv/bin/activate
 
 ## Usage
 
-Run the tool from your terminal using the `main.py` script.
+Run the tool from your terminal using the `cli.py` script.
 
 ```bash
-usage: main.py [-h] [--min-grid MIN_GRID] [-o FILENAME] [-i] [-d] image_source
+usage: cli.py [-h] [--min-grid MIN_GRID] [-o FILENAME] [-i] [-d] image_source
 
 Detect grid in AI pixel art & create downsampled image or debug overlay.
 
@@ -68,5 +68,5 @@ options:
 ## Example  
 
 ```bash
-python main.py assets/dragon.png -o pixel-art.png
+python cli.py assets/dragon.png -o pixel-art.png
 ```

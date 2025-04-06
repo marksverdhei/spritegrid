@@ -1,5 +1,5 @@
 import argparse
-from src import main
+from src.main import main
 
 def parse_args():
     """

@@ -8,6 +8,8 @@ from typing import Optional
 import requests
 from PIL import Image, UnidentifiedImageError, ImageDraw
 
+from .detection import detect_grid
+
 
 def load_image(image_source: str) -> Optional[Image.Image]:
     """
@@ -31,15 +33,6 @@ def load_image(image_source: str) -> Optional[Image.Image]:
             return img
     except FileNotFoundError:
         print(f"Error: Local file not found at '{image_source}'", file=sys.stderr)
-        return None
-    except requests.exceptions.RequestException as e:
-        print(f"Error: Could not retrieve image from URL '{image_source}'. Reason: {e}", file=sys.stderr)
-        return None
-    except UnidentifiedImageError:
-        print(f"Error: Cannot identify image file. It might be corrupted or an unsupported format: '{image_source}'", file=sys.stderr)
-        return None
-    except IOError as e:
-        print(f"Error: An I/O error occurred while handling '{image_source}'. Reason: {e}", file=sys.stderr)
         return None
     except Exception as e:
         print(f"An unexpected error occurred while loading '{image_source}': {e}", file=sys.stderr)
@@ -148,7 +141,7 @@ def handle_output(image_to_process: Image.Image, filename: Optional[str], show_f
 
 def main(
     args: argparse.Namespace,
-):
+) -> None:
     """
     Main function to parse arguments, load image, detect grid, and generate output/debug image.
     """
