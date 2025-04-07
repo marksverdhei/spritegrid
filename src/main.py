@@ -6,6 +6,8 @@ from typing import Optional
 import requests
 from PIL import Image, UnidentifiedImageError, ImageDraw
 
+from .segmentation import remove_background
+
 from .detection import detect_grid
 
 
@@ -155,7 +157,7 @@ def main(
     """
     Main function to parse arguments, load image, detect grid, and generate output/debug image.
     """
-
+    debug_image = None
     # Info message if no primary output action selected (and not in debug mode)
     if not args.debug and not args.output_file and not args.show:
          print("Info: No output option (-o or -i) selected for downsampled image. Only detection results will be printed.", file=sys.stderr)
@@ -164,8 +166,11 @@ def main(
     print(f"Loading image from: {args.image_source}")
     image = load_image(args.image_source)
 
+    image = remove_background(image, debug=False)[0] if args.remove_background else image
+
     if image is None:
         sys.exit(1)
+    
     print(f"Image loaded successfully ({image.width}x{image.height}, Mode: {image.mode}).")
 
     # Call the grid detection function from the detection module
@@ -193,17 +198,24 @@ def main(
         # --- Handle Debug or Normal Output ---
         if args.debug:
             print("\n--- Debug Mode ---")
-            debug_image = draw_grid_overlay(image, detected_w, detected_h)
-            handle_output(debug_image, args.output_file, args.show, is_debug=True, default_title=f"{args.image_source} ({detected_w}x{detected_h})")
+            output_image = draw_grid_overlay(image, detected_w, detected_h)
         else:
             # Only generate output image if requested
             if args.output_file or args.show:
                  print("\n--- Generating Downsampled Image ---")
                  output_image = create_downsampled_image(image, detected_w, detected_h, num_cells_w, num_cells_h, args.quantize)
-                 handle_output(output_image, args.output_file, args.show, is_debug=False, default_title=f"{args.image_source} ({num_cells_w}x{num_cells_h})")
-            # If not saving or showing, we've already printed results, so we're done.
 
-        # --- End Handle Output ---
+            remove_after = False
+            if args.remove_background and remove_after:
+                print("Removing background from the downsampled image...")
+                # Call the background removal function (assuming it's defined elsewhere)
+                # output_image, debug_image = remove_background(output_image, debug=True)
+                if debug_image:
+                    print("Background removed successfully.")
+                    # Save or show the debug image if needed
+                    handle_output(debug_image, args.output_file, args.show, is_debug=True)
+        
+        handle_output(output_image, args.output_file, args.show, is_debug=False, default_title=f"{args.image_source} ({num_cells_w}x{num_cells_h})")
 
     else:
         print("\n--- Failure ---")

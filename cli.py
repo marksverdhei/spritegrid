@@ -45,6 +45,12 @@ def parse_args():
         help="Per-channel bit depth for quantization. If not specified, the image will not be quantized."
     )
 
+    parser.add_argument(
+        "-b", "--remove-background",
+        action="store_true",
+        help="Remove background from the image after processing."
+    )
+
 
     args = parser.parse_args()
     return args

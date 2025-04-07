@@ -5,9 +5,11 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "matplotlib>=3.10.1",
     "opencv-python>=4.11.0.86",
     "pillow>=11.1.0",
     "requests>=2.32.3",
+    "scikit-learn>=1.6.1",
     "scipy>=1.15.2",
 ]
 
@@ -16,13 +18,6 @@ dev = [
     "ipykernel>=6.29.5",
     "ipython>=9.0.2",
     "pytest>=8.3.5",
-]
-sam = [
-    "accelerate>=1.6.0",
-    "matplotlib>=3.10.1",
-    "torch>=2.6.0",
-    "torchvision>=0.21.0",
-    "transformers>=4.51.0",
 ]
 
 [tool.pytest.ini_options]
