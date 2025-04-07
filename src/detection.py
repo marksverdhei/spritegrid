@@ -95,7 +95,7 @@ def detect_grid(image: Image.Image, min_grid_size: int = 4, smoothing_sigma: flo
     try:
         # 1. Convert to Grayscale and NumPy array
         # Use 'LA' to handle transparency if present, then select L channel
-        gray_image = image.convert('LA')[0] if image.mode in ('RGBA', 'LA') else image.convert('L')
+        gray_image = image.split()[0] if image.mode in ('RGBA', 'LA') else image.convert('L')
         img_array = np.array(gray_image, dtype=np.float32)
         img_h, img_w = img_array.shape
 

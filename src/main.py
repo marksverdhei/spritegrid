@@ -1,5 +1,3 @@
-# main.py
-
 import argparse
 import io
 import sys
@@ -7,6 +5,8 @@ from typing import Optional
 
 import requests
 from PIL import Image, UnidentifiedImageError, ImageDraw
+
+from .segmentation import remove_background
 
 from .detection import detect_grid
 
@@ -59,10 +59,10 @@ def draw_grid_overlay(image: Image.Image, grid_w: int, grid_h: int, color: str =
     return img_copy
 
 
-def create_downsampled_image(image: Image.Image, grid_w: int, grid_h: int, num_cells_w: int, num_cells_h: int) -> Image.Image:
+def create_downsampled_image(image: Image.Image, grid_w: int, grid_h: int, num_cells_w: int, num_cells_h: int, bit: int = 8) -> Image.Image:
     """
     Creates a new image by sampling the center pixel of each grid cell
-    from the original image.
+    from the original image and quantizing the colors.
 
     Args:
         image: The original PIL Image object.
@@ -70,6 +70,7 @@ def create_downsampled_image(image: Image.Image, grid_w: int, grid_h: int, num_c
         grid_h: The detected height of a grid cell in the original image.
         num_cells_w: The number of grid cells horizontally.
         num_cells_h: The number of grid cells vertically.
+        bit: Number of bits per color channel.
 
     Returns:
         A new PIL Image object with dimensions (num_cells_w, num_cells_h).
@@ -94,6 +95,11 @@ def create_downsampled_image(image: Image.Image, grid_w: int, grid_h: int, num_c
     new_pixels = new_img.load()
     original_width, original_height = original_image.size
 
+    max_value = 2**bit - 1
+
+    def quantize(value):
+        return round(value * max_value / 255) * 255 // max_value
+
     for y_new in range(num_cells_h):
         for x_new in range(num_cells_w):
             # Calculate center coordinates in the original image
@@ -103,8 +109,14 @@ def create_downsampled_image(image: Image.Image, grid_w: int, grid_h: int, num_c
             # Get pixel value from original image's center
             pixel_value = original_pixels[center_x, center_y]
 
-            # Set pixel value in the new image
-            new_pixels[x_new, y_new] = pixel_value
+            # Quantize pixel values
+            if isinstance(pixel_value, tuple):
+                if len(pixel_value) == 3: # RGB
+                    new_pixels[x_new, y_new] = (quantize(pixel_value[0]), quantize(pixel_value[1]), quantize(pixel_value[2]))
+                elif len(pixel_value) == 4: # RGBA
+                    new_pixels[x_new, y_new] = (quantize(pixel_value[0]), quantize(pixel_value[1]), quantize(pixel_value[2]), pixel_value[3]) # keep alpha
+            else: # Grayscale
+                new_pixels[x_new, y_new] = quantize(pixel_value)
 
     print("Downsampled image created.")
     return new_img
@@ -145,7 +157,7 @@ def main(
     """
     Main function to parse arguments, load image, detect grid, and generate output/debug image.
     """
-
+    debug_image = None
     # Info message if no primary output action selected (and not in debug mode)
     if not args.debug and not args.output_file and not args.show:
          print("Info: No output option (-o or -i) selected for downsampled image. Only detection results will be printed.", file=sys.stderr)
@@ -154,8 +166,11 @@ def main(
     print(f"Loading image from: {args.image_source}")
     image = load_image(args.image_source)
 
+    image = remove_background(image, debug=False)[0] if args.remove_background else image
+
     if image is None:
         sys.exit(1)
+    
     print(f"Image loaded successfully ({image.width}x{image.height}, Mode: {image.mode}).")
 
     # Call the grid detection function from the detection module
@@ -183,17 +198,24 @@ def main(
         # --- Handle Debug or Normal Output ---
         if args.debug:
             print("\n--- Debug Mode ---")
-            debug_image = draw_grid_overlay(image, detected_w, detected_h)
-            handle_output(debug_image, args.output_file, args.show, is_debug=True, default_title=f"{args.image_source} ({detected_w}x{detected_h})")
+            output_image = draw_grid_overlay(image, detected_w, detected_h)
         else:
             # Only generate output image if requested
             if args.output_file or args.show:
                  print("\n--- Generating Downsampled Image ---")
-                 output_image = create_downsampled_image(image, detected_w, detected_h, num_cells_w, num_cells_h)
-                 handle_output(output_image, args.output_file, args.show, is_debug=False, default_title=f"{args.image_source} ({num_cells_w}x{num_cells_h})")
-            # If not saving or showing, we've already printed results, so we're done.
+                 output_image = create_downsampled_image(image, detected_w, detected_h, num_cells_w, num_cells_h, args.quantize)
 
-        # --- End Handle Output ---
+            remove_after = False
+            if args.remove_background and remove_after:
+                print("Removing background from the downsampled image...")
+                # Call the background removal function (assuming it's defined elsewhere)
+                # output_image, debug_image = remove_background(output_image, debug=True)
+                if debug_image:
+                    print("Background removed successfully.")
+                    # Save or show the debug image if needed
+                    handle_output(debug_image, args.output_file, args.show, is_debug=True)
+        
+        handle_output(output_image, args.output_file, args.show, is_debug=False, default_title=f"{args.image_source} ({num_cells_w}x{num_cells_h})")
 
     else:
         print("\n--- Failure ---")
