@@ -1,8 +1,6 @@
 from PIL import Image
-from sklearn.cluster import DBSCAN, KMeans
+from sklearn.cluster import DBSCAN
 from sklearn.discriminant_analysis import StandardScaler
-from sklearn.mixture import GaussianMixture
-from hdbscan import HDBSCAN
 
 import numpy as np
 import matplotlib.pyplot as plt  # Ensure plt is imported
@@ -23,15 +21,9 @@ def generate_segment_masks(im_arr: np.ndarray, color_weight=1.0, spatial_weight=
 
     # Concatenate scaled features
     dataset = np.concatenate([color_scaled, spatial_scaled], axis=1)
-    # Use DBSCAN to cluster the pixels
-    # clusterer = KMeans(n_clusters=3)
-    # clusterer = GaussianMixture(n_components=3, covariance_type="full", random_state=0)
-    # clusterer = GaussianMixture(n_components=2, covariance_type="full", random_state=0)
-    # clusterer = HDBSCAN()
+
     clusterer = DBSCAN()
     labels = clusterer.fit_predict(dataset)
-
-
     label_mask = labels.reshape(h, w)
 
     if np.all(label_mask == -1):
