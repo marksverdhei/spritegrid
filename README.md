@@ -4,7 +4,10 @@
   </a>
 </div>
 
+
 # spritegrid  
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 
 Spritegrid is an image postprocessor for generative art. When general image generation models attempt to make pixel art, they often generate high-resolution images with janky pixels and grainy pixel colors. 
 
@@ -22,7 +25,6 @@ Spritegrid converts these images into a grid and generates the pixel art in its 
 As you can see, it works but it is not yet flawless. If you would like to contribute, hurry before I add some lame contribution guidelines!
 
 ---
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 
 ## Installation
