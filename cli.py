@@ -46,9 +46,11 @@ def parse_args():
     )
 
     parser.add_argument(
-        "-b", "--remove-background",
-        action="store_true",
-        help="Remove background from the image after processing."
+        '-b', '--remove-background',
+        nargs='?',
+        const='default',
+        choices=['before', 'after', 'default'],
+        help='Remove background (optionally specify "before" or "after")'
     )
 
 

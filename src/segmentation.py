@@ -1,5 +1,7 @@
 from PIL import Image
-from sklearn.cluster import DBSCAN
+from sklearn.cluster import DBSCAN, KMeans
+from sklearn.mixture import GaussianMixture
+
 import numpy as np
 import matplotlib.pyplot as plt  # Ensure plt is imported
 
@@ -10,15 +12,28 @@ def generate_segment_masks(im_arr: np.ndarray) -> np.ndarray:
     dataset = np.concatenate([im_arr.reshape(-1, 3), x.reshape(-1, 1), y.reshape(-1, 1)], axis=1)
 
     # Use DBSCAN to cluster the pixels
-    dbscan = DBSCAN(eps=5, min_samples=50)
-    labels = dbscan.fit_predict(dataset)
+    # clusterer = DBSCAN(eps=1, min_samples=100, metric="euclidean")
+    # clusterer = KMeans(n_clusters=3)
+    clusterer = GaussianMixture(n_components=3, covariance_type="full", random_state=0)
+    labels = clusterer.fit_predict(dataset)
+
     label_mask = labels.reshape(h, w)
+
+    if np.all(label_mask == -1):
+        print("No background found.")
+        return None
+
     return label_mask
 
 
 def remove_background(image: Image.Image, debug=False) -> tuple[Image.Image, Image.Image | None]:
     im_arr = np.array(image)
     label_mask = generate_segment_masks(im_arr)
+
+    if label_mask is None:
+        print("No background found.")
+        return image, None
+    
     labels_flat = label_mask.flatten()
     # For now, let's assume that the background is the most common segment
     bg_id = np.bincount(labels_flat[labels_flat != -1]).argmax()  # Find the most common label (background)
