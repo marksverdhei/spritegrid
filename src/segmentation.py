@@ -9,7 +9,9 @@ import matplotlib.pyplot as plt  # Ensure plt is imported
 def generate_segment_masks(im_arr: np.ndarray) -> np.ndarray:
     h, w = im_arr.shape[:2]
     x, y = np.meshgrid(np.arange(w), np.arange(h))
-    dataset = np.concatenate([im_arr.reshape(-1, 3), x.reshape(-1, 1), y.reshape(-1, 1)], axis=1)
+    dataset = np.concatenate(
+        [im_arr.reshape(-1, 3), x.reshape(-1, 1), y.reshape(-1, 1)], axis=1
+    )
 
     # Use DBSCAN to cluster the pixels
     # clusterer = DBSCAN(eps=1, min_samples=100, metric="euclidean")
@@ -26,7 +28,9 @@ def generate_segment_masks(im_arr: np.ndarray) -> np.ndarray:
     return label_mask
 
 
-def remove_background(image: Image.Image, debug=False) -> tuple[Image.Image, Image.Image | None]:
+def remove_background(
+    image: Image.Image, debug=False
+) -> tuple[Image.Image, Image.Image | None]:
     im_arr = np.array(image)
     label_mask = generate_segment_masks(im_arr)
 
@@ -36,9 +40,13 @@ def remove_background(image: Image.Image, debug=False) -> tuple[Image.Image, Ima
     
     labels_flat = label_mask.flatten()
     # For now, let's assume that the background is the most common segment
-    bg_id = np.bincount(labels_flat[labels_flat != -1]).argmax()  # Find the most common label (background)
+    bg_id = np.bincount(
+        labels_flat[labels_flat != -1]
+    ).argmax()  # Find the most common label (background)
 
-    mask = (label_mask != bg_id).astype(np.uint8) * 255  # Create a mask for non-background pixels
+    mask = (label_mask != bg_id).astype(
+        np.uint8
+    ) * 255  # Create a mask for non-background pixels
 
     # Make image with alpha channel
     image = Image.fromarray(im_arr)
@@ -59,15 +67,16 @@ def remove_background(image: Image.Image, debug=False) -> tuple[Image.Image, Ima
             mask = clustered_mask == label
             show_mask(mask, ax=ax, random_color=True)
         plt.axis("off")
-        
+
         # Convert the matplotlib figure to a PIL image
         fig.canvas.draw()
         debug_image = Image.frombytes(
-            'RGB', fig.canvas.get_width_height(), fig.canvas.tostring_argb()
+            "RGB", fig.canvas.get_width_height(), fig.canvas.tostring_argb()
         )
         plt.close(fig)  # Close the figure to free memory
 
     return image, debug_image
+
 
 def show_mask(mask, ax, random_color=False):
     if random_color:
