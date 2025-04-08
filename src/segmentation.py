@@ -1,23 +1,36 @@
 from PIL import Image
 from sklearn.cluster import DBSCAN, KMeans
+from sklearn.discriminant_analysis import StandardScaler
 from sklearn.mixture import GaussianMixture
+from hdbscan import HDBSCAN
 
 import numpy as np
 import matplotlib.pyplot as plt  # Ensure plt is imported
 
 
-def generate_segment_masks(im_arr: np.ndarray) -> np.ndarray:
+# def generate_segment_masks(im_arr: np.ndarray) -> np.ndarray:
+def generate_segment_masks(im_arr: np.ndarray, color_weight=1.0, spatial_weight=3.0) -> np.ndarray:
     h, w = im_arr.shape[:2]
     x, y = np.meshgrid(np.arange(w), np.arange(h))
-    dataset = np.concatenate(
-        [im_arr.reshape(-1, 3), x.reshape(-1, 1), y.reshape(-1, 1)], axis=1
-    )
 
+    # Flatten color and coordinates
+    color_features = im_arr.reshape(-1, 3).astype(np.float32)  # RGB
+    spatial_features = np.stack([x, y], axis=2).reshape(-1, 2).astype(np.float32)  # x, y
+
+    # Scale features independently
+    color_scaled = StandardScaler().fit_transform(color_features) * color_weight
+    spatial_scaled = StandardScaler().fit_transform(spatial_features) * spatial_weight
+
+    # Concatenate scaled features
+    dataset = np.concatenate([color_scaled, spatial_scaled], axis=1)
     # Use DBSCAN to cluster the pixels
-    # clusterer = DBSCAN(eps=1, min_samples=100, metric="euclidean")
-    # clusterer = KMeans(n_clusters=3)
-    clusterer = GaussianMixture(n_components=3, covariance_type="full", random_state=0)
+    clusterer = DBSCAN()
     labels = clusterer.fit_predict(dataset)
+    # clusterer = KMeans(n_clusters=3)
+    # clusterer = GaussianMixture(n_components=3, covariance_type="full", random_state=0)
+    # clusterer = GaussianMixture(n_components=2, covariance_type="full", random_state=0)
+    # clusterer = HDBSCAN()
+
 
     label_mask = labels.reshape(h, w)
 

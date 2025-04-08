@@ -269,7 +269,7 @@ def main(
     debug_image = None
 
     if args.remove_background == "default":
-        args.remove_background = "before"
+        args.remove_background = "after"
 
     # Info message if no primary output action selected (and not in debug mode)
     if not args.debug and not args.output_file and not args.show:
