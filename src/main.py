@@ -267,6 +267,10 @@ def main(
     Main function to parse arguments, load image, detect grid, and generate output/debug image.
     """
     debug_image = None
+
+    if args.remove_background == "default":
+        args.remove_background = "after"
+
     # Info message if no primary output action selected (and not in debug mode)
     if not args.debug and not args.output_file and not args.show:
         print(
@@ -277,9 +281,10 @@ def main(
     print(f"Loading image from: {args.image_source}")
     image = load_image(args.image_source)
 
-    image = (
-        remove_background(image, debug=False)[0] if args.remove_background else image
-    )
+    if args.remove_background == "before":
+        image = (
+            remove_background(image, debug=False)[0] if args.remove_background else image
+        )
 
     if image is None:
         sys.exit(1)
@@ -333,11 +338,11 @@ def main(
                     args.quantize,
                 )
 
-            remove_after = False
-            if args.remove_background and remove_after:
+
+            if args.remove_background == "after":
                 print("Removing background from the downsampled image...")
                 # Call the background removal function (assuming it's defined elsewhere)
-                # output_image, debug_image = remove_background(output_image, debug=True)
+                output_image, debug_image = remove_background(output_image, debug=True)
                 if debug_image:
                     print("Background removed successfully.")
                     # Save or show the debug image if needed

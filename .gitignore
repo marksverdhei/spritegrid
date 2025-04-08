@@ -1,3 +1,5 @@
+notebooks/
+*.ipynb
 *.png
 !assets/**/*.png
 

@@ -1,20 +1,35 @@
 from PIL import Image
 from sklearn.cluster import DBSCAN
+from sklearn.discriminant_analysis import StandardScaler
+
 import numpy as np
 import matplotlib.pyplot as plt  # Ensure plt is imported
 
 
-def generate_segment_masks(im_arr: np.ndarray) -> np.ndarray:
+# def generate_segment_masks(im_arr: np.ndarray) -> np.ndarray:
+def generate_segment_masks(im_arr: np.ndarray, color_weight=1.0, spatial_weight=3.0) -> np.ndarray:
     h, w = im_arr.shape[:2]
     x, y = np.meshgrid(np.arange(w), np.arange(h))
-    dataset = np.concatenate(
-        [im_arr.reshape(-1, 3), x.reshape(-1, 1), y.reshape(-1, 1)], axis=1
-    )
 
-    # Use DBSCAN to cluster the pixels
-    dbscan = DBSCAN(eps=5, min_samples=50)
-    labels = dbscan.fit_predict(dataset)
+    # Flatten color and coordinates
+    color_features = im_arr.reshape(-1, 3).astype(np.float32)  # RGB
+    spatial_features = np.stack([x, y], axis=2).reshape(-1, 2).astype(np.float32)  # x, y
+
+    # Scale features independently
+    color_scaled = StandardScaler().fit_transform(color_features) * color_weight
+    spatial_scaled = StandardScaler().fit_transform(spatial_features) * spatial_weight
+
+    # Concatenate scaled features
+    dataset = np.concatenate([color_scaled, spatial_scaled], axis=1)
+
+    clusterer = DBSCAN()
+    labels = clusterer.fit_predict(dataset)
     label_mask = labels.reshape(h, w)
+
+    if np.all(label_mask == -1):
+        print("No background found.")
+        return None
+
     return label_mask
 
 
@@ -23,6 +38,11 @@ def remove_background(
 ) -> tuple[Image.Image, Image.Image | None]:
     im_arr = np.array(image)
     label_mask = generate_segment_masks(im_arr)
+
+    if label_mask is None:
+        print("No background found.")
+        return image, None
+    
     labels_flat = label_mask.flatten()
     # For now, let's assume that the background is the most common segment
     bg_id = np.bincount(
