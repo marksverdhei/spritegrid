@@ -9,6 +9,9 @@ from PIL import Image, UnidentifiedImageError, ImageDraw
 from .segmentation import remove_background
 
 from .detection import detect_grid
+from .utils import geometric_median, naive_median
+from PIL import Image
+import numpy as np
 
 
 def load_image(image_source: str) -> Optional[Image.Image]:
@@ -59,9 +62,18 @@ def draw_grid_overlay(image: Image.Image, grid_w: int, grid_h: int, color: str =
     return img_copy
 
 
-def create_downsampled_image(image: Image.Image, grid_w: int, grid_h: int, num_cells_w: int, num_cells_h: int, bit: int = 8) -> Image.Image:
+def create_downsampled_image(
+        image: Image.Image,
+        grid_w: int,
+        grid_h: int,
+        num_cells_w: int,
+        num_cells_h: int,
+        bit: int = 8,
+        kernel_size: tuple = (3, 3),
+        median_type: str = "naive"
+) -> Image.Image:
     """
-    Creates a new image by sampling the center pixel of each grid cell
+    Creates a new image by sampling the geometric median pixel of each grid cell
     from the original image and quantizing the colors.
 
     Args:
@@ -71,17 +83,29 @@ def create_downsampled_image(image: Image.Image, grid_w: int, grid_h: int, num_c
         num_cells_w: The number of grid cells horizontally.
         num_cells_h: The number of grid cells vertically.
         bit: Number of bits per color channel.
+        kernel_size: Size of the kernel to sample from (width, height).
 
     Returns:
         A new PIL Image object with dimensions (num_cells_w, num_cells_h).
     """
-    print(f"Creating downsampled image ({num_cells_w}x{num_cells_h}) by center-pixel sampling...")
+
+    _median = naive_median if median_type == "naive" else geometric_median
+    kernel_w, kernel_h = kernel_size
+    
+    # Validate kernel size is odd (to have a clear center)
+    if kernel_w % 2 == 0 or kernel_h % 2 == 0:
+        raise ValueError(f"Kernel dimensions must be odd numbers: {kernel_w=}, {kernel_h=}")
+    
     # Ensure grid dimensions are valid
     if grid_w <= 0 or grid_h <= 0 or num_cells_w <= 0 or num_cells_h <= 0:
-        print("Error: Invalid dimensions provided for downsampling.", file=sys.stderr)
-        # Return a 1x1 pixel image in this case? Or raise error? Let's return small blank.
-        return Image.new(image.mode, (1, 1))
-
+        raise ValueError(f"Invalid grid dimensions or number of cells provided: {grid_w=}, {grid_h=}, {num_cells_w=}, {num_cells_h=}")
+    
+    # Check if kernel size is compatible with grid size
+    if kernel_w > grid_w or kernel_h > grid_h:
+        raise ValueError(f"Kernel size ({kernel_w}x{kernel_h}) cannot be larger than grid cell size ({grid_w}x{grid_h})")
+    
+    print(f"Creating downsampled image ({num_cells_w}x{num_cells_h}) using geometric median of {kernel_w}x{kernel_h} kernel...")
+    
     # Use a mode that supports transparency if the original has it (e.g., PNG)
     mode = image.mode if image.mode in ['RGB', 'RGBA', 'L'] else 'RGBA'
     if image.mode != mode:
@@ -91,10 +115,11 @@ def create_downsampled_image(image: Image.Image, grid_w: int, grid_h: int, num_c
         original_image = image # No conversion needed
 
     new_img = Image.new(mode, (num_cells_w, num_cells_h))
-    original_pixels = original_image.load()
-    new_pixels = new_img.load()
     original_width, original_height = original_image.size
-
+    
+    # Convert PIL image to numpy array for easier processing
+    original_array = np.array(original_image)
+    
     max_value = 2**bit - 1
 
     def quantize(value):
@@ -105,21 +130,53 @@ def create_downsampled_image(image: Image.Image, grid_w: int, grid_h: int, num_c
             # Calculate center coordinates in the original image
             center_x = min(int(x_new * grid_w + grid_w / 2), original_width - 1)
             center_y = min(int(y_new * grid_h + grid_h / 2), original_height - 1)
-
-            # Get pixel value from original image's center
-            pixel_value = original_pixels[center_x, center_y]
-
-            # Quantize pixel values
-            if isinstance(pixel_value, tuple):
-                if len(pixel_value) == 3: # RGB
-                    new_pixels[x_new, y_new] = (quantize(pixel_value[0]), quantize(pixel_value[1]), quantize(pixel_value[2]))
-                elif len(pixel_value) == 4: # RGBA
-                    new_pixels[x_new, y_new] = (quantize(pixel_value[0]), quantize(pixel_value[1]), quantize(pixel_value[2]), pixel_value[3]) # keep alpha
-            else: # Grayscale
-                new_pixels[x_new, y_new] = quantize(pixel_value)
-
+            
+            # Calculate kernel boundaries
+            half_kernel_w = kernel_w // 2
+            half_kernel_h = kernel_h // 2
+            
+            # Ensure kernel stays within image boundaries
+            x_start = max(0, center_x - half_kernel_w)
+            y_start = max(0, center_y - half_kernel_h)
+            x_end = min(original_width, center_x + half_kernel_w + 1)
+            y_end = min(original_height, center_y + half_kernel_h + 1)
+            
+            # Extract kernel pixels
+            kernel_pixels = original_array[y_start:y_end, x_start:x_end]
+            
+            # Check if we have enough pixels to compute the geometric median
+            if kernel_pixels.size == 0:
+                raise ValueError(f"Kernel at position ({x_new}, {y_new}) contains no pixels")
+            
+            # Reshape to list of pixels for geometric median calculation
+            pixels_list = kernel_pixels.reshape(-1, kernel_pixels.shape[-1])
+            
+            # Compute geometric median pixel
+            median_pixel = _median(pixels_list)
+            
+            # Quantize the median pixel if needed
+            if bit != 8:
+                if mode == 'RGB':
+                    median_pixel = np.array([quantize(median_pixel[0]), 
+                                             quantize(median_pixel[1]), 
+                                             quantize(median_pixel[2])])
+                elif mode == 'RGBA':
+                    median_pixel = np.array([quantize(median_pixel[0]), 
+                                             quantize(median_pixel[1]), 
+                                             quantize(median_pixel[2]), 
+                                             median_pixel[3]])  # keep alpha
+                else:  # Grayscale
+                    median_pixel = np.array([quantize(median_pixel[0])])
+            
+            # Convert the median pixel to the appropriate format and set it in the new image
+            if mode == 'L':
+                new_img.putpixel((x_new, y_new), int(median_pixel[0]))
+            else:
+                new_img.putpixel((x_new, y_new), tuple(map(int, median_pixel)))
+    
     print("Downsampled image created.")
     return new_img
+
 
 def handle_output(image_to_process: Image.Image, filename: Optional[str], show_flag: bool, is_debug: bool, default_title: str="Spritegrid Output"):
     """Helper function to save or show the processed image."""
