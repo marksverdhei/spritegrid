@@ -70,3 +70,7 @@ options:
 ```bash
 python cli.py assets/dragon.png -o pixel-art.png
 ```
+You can then resize it using, e.g. imagemagick convert
+```bash
+convert pixel-art.png -filter point -resize 400% pixel-art-large.png
+```
