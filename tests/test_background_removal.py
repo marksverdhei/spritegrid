@@ -1,4 +1,4 @@
-from segmentation import remove_background
+from spritegrid.segmentation import remove_background
 from PIL import Image
 
 
