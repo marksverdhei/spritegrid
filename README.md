@@ -29,48 +29,23 @@ As you can see, it works but it is not yet flawless. If you would like to contri
 
 ## Installation
 
-Prerequisites: `uv`
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```  
-
-```bash
-git clone https://github.com/marksverdhei/spritegrid.git
+pip install git+https://github.com/marksverdhei/spritegrid.git
 ```
-
-```bash
-uv sync
-source .venv/bin/activate
-```
-
 
 ## Usage
 
-Run the tool from your terminal using the `cli.py` script.
-
+Basic
 ```bash
-usage: cli.py [-h] [--min-grid MIN_GRID] [-o FILENAME] [-i] [-d] image_source
-
-Detect grid in AI pixel art & create downsampled image or debug overlay.
-
-positional arguments:
-  image_source          Path to the local image file or URL of the image.
-
-options:
-  -h, --help            show this help message and exit
-  --min-grid MIN_GRID   Minimum expected grid dimension (width or height) for peak detection. (Default: 4)
-  -o FILENAME, --output FILENAME
-                        Save the output image (downsampled by default, or debug overlay if -d is used) to FILENAME.
-  -i, --show            Display the output image (downsampled by default, or debug overlay if -d is used) using the default system viewer.
-  -d, --debug           Enable debug mode: output/show a grid overlay instead of the downsampled image. Defaults to showing if -o or -i are not specified.
+spritegrid assets/examples/centurion.png -o centurion.png
 ```
 
-## Example  
-
+With background removal
 ```bash
-python cli.py assets/dragon.png -o pixel-art.png
+spritegrid assets/examples/centurion.png -b -o centurion.png
 ```
-You can then resize it using, e.g. imagemagick convert
+
+You can resize the image afterwards with, e.g. imagemagick
 ```bash
 convert pixel-art.png -filter point -resize 400% pixel-art-large.png
 ```

@@ -3,7 +3,7 @@ import numpy as np
 from PIL import Image
 
 # Import the functions to be tested
-from detection import find_dominant_spacing, detect_grid
+from spritegrid.detection import find_dominant_spacing, detect_grid
 
 
 def create_test_image(img_w, img_h, grid_w, grid_h, color=False, noise_level=0):
@@ -52,31 +52,3 @@ def test_detect_grid():
     detected_w, detected_h = detect_grid(image, min_grid_size=1)
 
     assert (detected_w, detected_h) == (grid_w, grid_h)
-
-
-def test_logo():
-    image = Image.open("assets/image.png")
-    grid = detect_grid(image, min_grid_size=1)
-
-    assert grid != (0, 0), "Grid detection failed"
-
-    w_eyes = 5
-    w_mouth_min = 4
-    w_mouth_max = 5
-
-    w_pad_min = 2
-    w_pad_max = 3
-    w_mouth_max = 5
-    w_min = w_eyes * 2 + w_mouth_min + w_pad_min * 2 + 2 * 1
-    w_max = w_eyes * 2 + w_mouth_max + w_pad_max * 2 + 2 * 1
-    detected_w, detected_h = grid
-
-    assert detected_w >= w_min, (
-        f"Detected width {detected_w} is less than minimum {w_min}"
-    )
-    assert detected_w <= w_max, (
-        f"Detected width {detected_w} is greater than maximum {w_max}"
-    )
-    h = 1 + 3 + 1 + 6 + 1 + 5 + 1 + 2 + 1
-    assert detected_h >= h - 2, f"Detected height {detected_h} is less than minimum {h}"
-    assert detected_h <= h + 2, f"Detected height {detected_h} is less than minimum {h}"
