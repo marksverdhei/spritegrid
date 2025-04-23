@@ -3,10 +3,9 @@ from sklearn.cluster import DBSCAN
 from sklearn.discriminant_analysis import StandardScaler
 
 import numpy as np
-import matplotlib.pyplot as plt  # Ensure plt is imported
+import matplotlib.pyplot as plt
 
 
-# def generate_segment_masks(im_arr: np.ndarray) -> np.ndarray:
 def generate_segment_masks(im_arr: np.ndarray, color_weight=1.0, spatial_weight=3.0) -> np.ndarray:
     h, w = im_arr.shape[:2]
     x, y = np.meshgrid(np.arange(w), np.arange(h))
