@@ -1,6 +1,6 @@
 <div align="center">
   <a href="https://github.com/marksverdhei/spritegrid">
-    <img alt="spritegrid" height="200px" src="assets/logo/336x336.png">
+    <img alt="spritegrid" height="200px" src="https://raw.githubusercontent.com/marksverdhei/spritegrid/main/assets/logo/336x336.png">
   </a>
 </div>
 
@@ -11,7 +11,7 @@
 
 Spritegrid is an image postprocessor for generative art. When general image generation models attempt to make pixel art, they often generate high-resolution images with janky pixels and grainy pixel colors. 
 
-<img alt="example showing janky and grainy pixels" height="200px" src="assets/docs/visualization.png">
+<img alt="example showing janky and grainy pixels" height="200px" src="https://raw.githubusercontent.com/marksverdhei/spritegrid/main/assets/docs/visualization.png">
 
 1. Pixels can be janky and pixels can be incorrectly aligned (half-pixels etc).
 2. Pixels are grainy and don't contain a single color.
@@ -20,7 +20,7 @@ spritegrid divides
 Spritegrid converts these images into a grid and generates the pixel art in its appropriate resolution:
 
 
-<img alt="comparison before and after postprocessing" height="400px" src="assets/docs/comparison.png">
+<img alt="comparison before and after postprocessing" height="400px" src="https://raw.githubusercontent.com/marksverdhei/spritegrid/main/assets/docs/comparison.png">
 
 As you can see, it works but it is not yet flawless. If you would like to contribute, hurry before I add some lame contribution guidelines!
 
@@ -30,7 +30,7 @@ As you can see, it works but it is not yet flawless. If you would like to contri
 ## Installation
 
 ```bash
-pip install git+https://github.com/marksverdhei/spritegrid.git
+pip install spritegrid
 ```
 
 ## Usage
