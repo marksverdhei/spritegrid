@@ -45,3 +45,7 @@ With background removal
 spritegrid assets/examples/centurion.png -b -o centurion.png
 ```
 
+You can resize the image afterwards with, e.g. imagemagick
+```bash
+convert pixel-art.png -filter point -resize 400% pixel-art-large.png
+```
