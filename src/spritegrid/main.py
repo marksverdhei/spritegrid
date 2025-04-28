@@ -340,17 +340,16 @@ def main(
                     quantize,
                 )
 
-
             if remove_background == "after":
                 print("Removing background from the downsampled image...")
                 # Call the background removal function
-                output_image, debug_image = make_background_transparent(output_image, debug=True)
+                output_image, debug_image = make_background_transparent(
+                    output_image, debug=True
+                )
                 if debug_image:
                     print("Background removed successfully.")
                     # Save or show the debug image if needed
-                    handle_output(
-                        debug_image, output_file, show, is_debug=True
-                    )
+                    handle_output(debug_image, output_file, show, is_debug=True)
 
         handle_output(
             output_image,
