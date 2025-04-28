@@ -6,13 +6,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def generate_segment_masks(im_arr: np.ndarray, color_weight=1.0, spatial_weight=3.0) -> np.ndarray:
+def generate_segment_masks(
+    im_arr: np.ndarray, color_weight=1.0, spatial_weight=3.0
+) -> np.ndarray:
     h, w = im_arr.shape[:2]
     x, y = np.meshgrid(np.arange(w), np.arange(h))
 
     # Flatten color and coordinates
     color_features = im_arr.reshape(-1, 3).astype(np.float32)  # RGB
-    spatial_features = np.stack([x, y], axis=2).reshape(-1, 2).astype(np.float32)  # x, y
+    spatial_features = (
+        np.stack([x, y], axis=2).reshape(-1, 2).astype(np.float32)
+    )  # x, y
 
     # Scale features independently
     color_scaled = StandardScaler().fit_transform(color_features) * color_weight
@@ -32,7 +36,7 @@ def generate_segment_masks(im_arr: np.ndarray, color_weight=1.0, spatial_weight=
     return label_mask
 
 
-def remove_background(
+def make_background_transparent(
     image: Image.Image, debug=False
 ) -> tuple[Image.Image, Image.Image | None]:
     im_arr = np.array(image)
@@ -41,7 +45,7 @@ def remove_background(
     if label_mask is None:
         print("No background found.")
         return image, None
-    
+
     labels_flat = label_mask.flatten()
     # For now, let's assume that the background is the most common segment
     bg_id = np.bincount(

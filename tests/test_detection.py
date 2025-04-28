@@ -1,9 +1,8 @@
-import pytest
 import numpy as np
 from PIL import Image
 
 # Import the functions to be tested
-from spritegrid.detection import find_dominant_spacing, detect_grid
+from spritegrid.detection import detect_grid
 
 
 def create_test_image(img_w, img_h, grid_w, grid_h, color=False, noise_level=0):

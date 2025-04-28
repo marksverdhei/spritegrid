@@ -2,7 +2,6 @@ import argparse
 from .main import main
 
 
-
 def parse_args() -> argparse.Namespace:
     """
     Main function to parse arguments, load image, detect grid, and generate output/debug image.
@@ -53,11 +52,12 @@ def parse_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        '-b', '--remove-background',
-        nargs='?',
-        const='default',
-        choices=['before', 'after', 'default'],
-        help='Remove background (optionally specify "before" or "after")'
+        "-b",
+        "--remove-background",
+        nargs="?",
+        const="default",
+        choices=["before", "after", "default"],
+        help='Remove background (optionally specify "before" or "after")',
     )
 
     args = parser.parse_args()
@@ -69,7 +69,15 @@ def cli() -> None:
     The main entry point for the command line interface.
     """
     args = parse_args()
-    main()
+    main(
+        image_source=args.image_source,
+        min_grid=args.min_grid,
+        output_file=args.output_file,
+        show=args.show,
+        debug=args.debug,
+        quantize=args.quantize,
+        remove_background=args.remove_background,
+    )
 
 
 if __name__ == "__main__":
