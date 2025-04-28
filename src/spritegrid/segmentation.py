@@ -36,6 +36,46 @@ def generate_segment_masks(
     return label_mask
 
 
+def auto_crop_transparent(image: Image.Image) -> Image.Image:
+    """
+    Automatically crop the image to remove transparent areas.
+    Crops to the smallest rectangle that contains all non-transparent pixels.
+    
+    Args:
+        image: PIL Image with an alpha channel
+        
+    Returns:
+        Cropped PIL Image
+    """
+    if 'A' not in image.getbands():
+        print("Image has no alpha channel, auto-crop requires transparency. Returning original image.")
+        return image
+    
+    # Get alpha band to find non-transparent pixels
+    alpha = np.array(image.getchannel('A'))
+    
+    # Find rows and columns with non-transparent pixels
+    non_transparent_rows = np.where(np.max(alpha, axis=1) > 0)[0]
+    non_transparent_cols = np.where(np.max(alpha, axis=0) > 0)[0]
+    
+    # If the image is completely transparent, return the original
+    if len(non_transparent_rows) == 0 or len(non_transparent_cols) == 0:
+        print("Image is completely transparent. Nothing to crop.")
+        return image
+    
+    # Find boundaries (min/max values for non-transparent rows and columns)
+    min_row, max_row = non_transparent_rows[0], non_transparent_rows[-1]
+    min_col, max_col = non_transparent_cols[0], non_transparent_cols[-1]
+    
+    # Crop the image
+    cropped_image = image.crop((min_col, min_row, max_col + 1, max_row + 1))
+    
+    print(f"Auto-crop: removed {min_row} rows from top, {image.height - max_row - 1} from bottom, "
+          f"{min_col} columns from left, {image.width - max_col - 1} from right")
+    
+    return cropped_image
+
+
 def make_background_transparent(
     image: Image.Image, debug=False
 ) -> tuple[Image.Image, Image.Image | None]:

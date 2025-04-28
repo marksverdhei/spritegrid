@@ -5,7 +5,7 @@ from typing import Optional
 import requests
 from PIL import Image, ImageDraw
 
-from spritegrid.segmentation import make_background_transparent
+from spritegrid.segmentation import make_background_transparent, auto_crop_transparent
 
 from .detection import detect_grid
 from .utils import geometric_median, naive_median
@@ -67,9 +67,9 @@ def draw_grid_overlay(
             file=sys.stderr,
         )
         return img_copy
-    for x in range(grid_w, img_width, grid_w):
+    for x in range(grid_w, img_width, img_width):
         draw.line([(x, 0), (x, img_height)], fill=color, width=line_width)
-    for y in range(grid_h, img_height, grid_h):
+    for y in range(grid_h, img_height, img_height):
         draw.line([(0, y), (img_width, y)], fill=color, width=line_width)
     # print(f"Debug grid overlay drawn with {grid_w}x{grid_h} cells.") # Make less verbose
     return img_copy
@@ -266,9 +266,20 @@ def main(
     debug: bool = False,
     quantize: int = 8,
     remove_background: Optional[str] = None,
+    auto_crop: bool = False,
 ) -> None:
     """
     Main function to parse arguments, load image, detect grid, and generate output/debug image.
+    
+    Args:
+        image_source: Path to the image file or URL
+        min_grid: Minimum expected grid dimension for detection
+        output_file: Path to save the output image
+        show: Whether to display the output image
+        debug: Enable debug mode (shows grid overlay)
+        quantize: Per-channel bit depth for quantization
+        remove_background: Whether and when to remove the background ('before', 'after', or None)
+        auto_crop: Whether to automatically crop transparent areas
     """
     debug_image = None
 
@@ -287,6 +298,9 @@ def main(
 
     if remove_background == "before":
         image = make_background_transparent(image, debug=False)[0]
+        if auto_crop:
+            print("Auto-cropping image after background removal (before processing)...")
+            image = auto_crop_transparent(image)
 
     if image is None:
         sys.exit(1)
@@ -346,6 +360,10 @@ def main(
                 output_image, debug_image = make_background_transparent(
                     output_image, debug=True
                 )
+                if auto_crop:
+                    print("Auto-cropping image after background removal...")
+                    output_image = auto_crop_transparent(output_image)
+                    
                 if debug_image:
                     print("Background removed successfully.")
                     # Save or show the debug image if needed

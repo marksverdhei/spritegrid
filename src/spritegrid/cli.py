@@ -59,6 +59,12 @@ def parse_args() -> argparse.Namespace:
         choices=["before", "after", "default"],
         help='Remove background (optionally specify "before" or "after")',
     )
+    
+    parser.add_argument(
+        "--auto-crop",
+        action="store_true",
+        help="Automatically crop the image to remove transparent areas after background removal.",
+    )
 
     args = parser.parse_args()
     return args
@@ -77,6 +83,7 @@ def cli() -> None:
         debug=args.debug,
         quantize=args.quantize,
         remove_background=args.remove_background,
+        auto_crop=args.auto_crop,
     )
 
 
