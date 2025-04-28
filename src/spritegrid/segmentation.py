@@ -22,6 +22,11 @@ def generate_segment_masks(
     color_scaled = StandardScaler().fit_transform(color_features) * color_weight
     spatial_scaled = StandardScaler().fit_transform(spatial_features) * spatial_weight
 
+    # Ensure color_features and spatial_features have the same number of rows
+    min_rows = min(color_features.shape[0], spatial_features.shape[0])
+    color_features = color_features[:min_rows]
+    spatial_features = spatial_features[:min_rows]
+
     # Concatenate scaled features
     dataset = np.concatenate([color_scaled, spatial_scaled], axis=1)
 

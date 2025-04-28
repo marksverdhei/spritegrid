@@ -284,12 +284,12 @@ def main(
     print(f"Loading image from: {image_source}")
     image = load_image(image_source)
 
-    if remove_background == "before":
-        image = make_background_transparent(image, debug=False)[0]
-
     if crop:
         print("Cropping image to non-transparent regions...")
         image = crop_to_non_transparent(image)
+
+    if remove_background == "before":
+        image = make_background_transparent(image, debug=False)[0]
 
     if image is None:
         sys.exit(1)
