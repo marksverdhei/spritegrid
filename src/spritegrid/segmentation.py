@@ -32,7 +32,7 @@ def generate_segment_masks(im_arr: np.ndarray, color_weight=1.0, spatial_weight=
     return label_mask
 
 
-def remove_background(
+def make_background_transparent(
     image: Image.Image, debug=False
 ) -> tuple[Image.Image, Image.Image | None]:
     im_arr = np.array(image)

@@ -1,16 +1,14 @@
-import argparse
 import io
 import sys
 from typing import Optional
 
 import requests
-from PIL import Image, UnidentifiedImageError, ImageDraw
+from PIL import Image, ImageDraw
 
-from .segmentation import remove_background
+from spritegrid.segmentation import make_background_transparent
 
 from .detection import detect_grid
 from .utils import geometric_median, naive_median
-from PIL import Image
 import numpy as np
 
 
@@ -261,30 +259,34 @@ def handle_output(
 
 
 def main(
-    args: argparse.Namespace,
+    image_source: str,
+    min_grid: int = 4,
+    output_file: Optional[str] = None,
+    show: bool = False,
+    debug: bool = False,
+    quantize: int = 8,
+    remove_background: Optional[str] = None,
 ) -> None:
     """
     Main function to parse arguments, load image, detect grid, and generate output/debug image.
     """
     debug_image = None
 
-    if args.remove_background == "default":
-        args.remove_background = "after"
+    if remove_background == "default":
+        remove_background = "after"
 
     # Info message if no primary output action selected (and not in debug mode)
-    if not args.debug and not args.output_file and not args.show:
+    if not debug and not output_file and not show:
         print(
             "Info: No output option (-o or -i) selected for downsampled image. Only detection results will be printed.",
             file=sys.stderr,
         )
 
-    print(f"Loading image from: {args.image_source}")
-    image = load_image(args.image_source)
+    print(f"Loading image from: {image_source}")
+    image = load_image(image_source)
 
-    if args.remove_background == "before":
-        image = (
-            remove_background(image, debug=False)[0] if args.remove_background else image
-        )
+    if remove_background == "before":
+        image = make_background_transparent(image, debug=False)[0]
 
     if image is None:
         sys.exit(1)
@@ -294,7 +296,7 @@ def main(
     )
 
     # Call the grid detection function from the detection module
-    detected_w, detected_h = detect_grid(image, min_grid_size=args.min_grid)
+    detected_w, detected_h = detect_grid(image, min_grid_size=min_grid)
 
     # Check the results returned by detect_grid
     if detected_w > 0 and detected_h > 0:
@@ -322,12 +324,12 @@ def main(
             )
 
         # --- Handle Debug or Normal Output ---
-        if args.debug:
+        if debug:
             print("\n--- Debug Mode ---")
             output_image = draw_grid_overlay(image, detected_w, detected_h)
         else:
             # Only generate output image if requested
-            if args.output_file or args.show:
+            if output_file or show:
                 print("\n--- Generating Downsampled Image ---")
                 output_image = create_downsampled_image(
                     image,
@@ -335,27 +337,27 @@ def main(
                     detected_h,
                     num_cells_w,
                     num_cells_h,
-                    args.quantize,
+                    quantize,
                 )
 
 
-            if args.remove_background == "after":
+            if remove_background == "after":
                 print("Removing background from the downsampled image...")
-                # Call the background removal function (assuming it's defined elsewhere)
-                output_image, debug_image = remove_background(output_image, debug=True)
+                # Call the background removal function
+                output_image, debug_image = make_background_transparent(output_image, debug=True)
                 if debug_image:
                     print("Background removed successfully.")
                     # Save or show the debug image if needed
                     handle_output(
-                        debug_image, args.output_file, args.show, is_debug=True
+                        debug_image, output_file, show, is_debug=True
                     )
 
         handle_output(
             output_image,
-            args.output_file,
-            args.show,
+            output_file,
+            show,
             is_debug=False,
-            default_title=f"{args.image_source} ({num_cells_w}x{num_cells_h})",
+            default_title=f"{image_source} ({num_cells_w}x{num_cells_h})",
         )
 
     else:
