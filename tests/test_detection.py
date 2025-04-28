@@ -1,6 +1,7 @@
+import numpy as np
+from spritegrid.detection import find_dominant_spacing
 import os
 import sys
-import numpy as np
 from PIL import Image
 import spritegrid.detection as detection_module
 from spritegrid.detection import detect_grid
@@ -233,3 +234,96 @@ def test_detect_grid_generic_exception_branch(monkeypatch, capsys):
     # Capture either the printed message or traceback containing 'boom'
     err = captured.err.lower()
     assert 'unexpected error' in err or 'boom' in err
+# tests/test_detection_spacing.py
+
+def test_find_dominant_spacing_none_profile():
+    """
+    Test that passing None as the profile returns 0.
+    """
+    assert find_dominant_spacing(None) == 0
+
+
+def test_find_dominant_spacing_short_profile():
+    """
+    Test that a profile shorter than twice the min_spacing returns 0.
+    """
+    profile = np.arange(5)  # length 5, with default min_spacing=3 we need at least 6
+    assert len(profile) < 3 * 2
+    assert find_dominant_spacing(profile, min_spacing=3) == 0
+
+
+def test_find_dominant_spacing_flat_profile():
+    """
+    Test that a constant (flat) profile returns 0 even after adjusted prominence.
+    """
+    profile = np.full(10, 100.0)
+    assert find_dominant_spacing(profile) == 0
+
+
+def test_find_dominant_spacing_small_range_adjusted_prominence():
+    """
+    Test that a profile with very small dynamic range (ptp == 0) returns 0.
+    """
+    profile = np.ones(10) * 1e-9
+    assert np.ptp(profile) == 0
+    assert find_dominant_spacing(profile) == 0
+
+
+def test_find_dominant_spacing_single_peak():
+    """
+    Test that a profile with only one significant peak returns 0.
+    """
+    profile = np.zeros(20)
+    profile[10] = 10
+    # Only one peak in the data
+    assert find_dominant_spacing(profile) == 0
+
+
+def test_find_dominant_spacing_two_peaks():
+    """
+    Test that a profile with exactly two peaks returns their distance.
+    """
+    profile = np.zeros(30)
+    profile[5] = 10
+    profile[15] = 20
+    expected_spacing = 15 - 5
+    assert find_dominant_spacing(profile) == expected_spacing
+
+
+def test_find_dominant_spacing_multiple_peaks_uniform_spacing():
+    """
+    Test that a profile with multiple equally spaced peaks returns the correct mode.
+    """
+    profile = np.zeros(50)
+    indices = [5, 15, 25, 35]
+    for idx in indices:
+        profile[idx] = 10
+    # Spacings are all 10
+    assert find_dominant_spacing(profile) == 10
+
+
+def test_find_dominant_spacing_tied_spacings():
+    """
+    Test that when two spacings have the same count, the first encountered mode is returned.
+    """
+    profile = np.zeros(50)
+    # Peaks at [2,5,7,10,12] => spacings [3,2,3,2], counts 3->2, 2->2. Expect 3 (first encountered)
+    indices = [2, 5, 7, 10, 12]
+    for idx in indices:
+        profile[idx] = 10
+    assert find_dominant_spacing(profile) == 3
+
+# Additional sanity check: large random data with known spacing pattern
+
+def test_find_dominant_spacing_with_noise_and_known_peaks():
+    """
+    Create a noisy profile but enforce peaks at known intervals.
+    """
+    np.random.seed(0)
+    profile = np.random.normal(loc=0.0, scale=0.5, size=200)
+    # Add peaks at every 20 indices
+    for base in range(10, 200, 20):
+        profile[base] += 10
+    # Spacings between peaks are all 20
+    spacing = find_dominant_spacing(profile)
+    assert spacing == 20
