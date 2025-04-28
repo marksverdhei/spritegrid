@@ -60,6 +60,12 @@ def parse_args() -> argparse.Namespace:
         help='Remove background (optionally specify "before" or "after")',
     )
 
+    parser.add_argument(
+        "--crop",
+        action="store_true",
+        help="Crop the image to the first and last rows and columns where all pixels aren't transparent.",
+    )
+
     args = parser.parse_args()
     return args
 
@@ -77,6 +83,7 @@ def cli() -> None:
         debug=args.debug,
         quantize=args.quantize,
         remove_background=args.remove_background,
+        crop=args.crop,  # Pass the crop argument
     )
 
 

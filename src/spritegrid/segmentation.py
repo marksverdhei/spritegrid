@@ -94,3 +94,41 @@ def show_mask(mask, ax, random_color=False):
     h, w = mask.shape
     mask_image = mask.reshape(h, w, 1) * color.reshape(1, 1, -1)
     ax.imshow(mask_image, interpolation="none")  # Ensure proper rendering
+
+
+def crop_to_non_transparent(image: Image.Image) -> Image.Image:
+    """
+    Crops the image to the first and last rows and columns where all pixels aren't transparent.
+
+    Args:
+        image: The input PIL Image object.
+
+    Returns:
+        A cropped PIL Image object.
+    """
+    # Ensure the image has an alpha channel
+    if image.mode != "RGBA":
+        image = image.convert("RGBA")
+
+    # Convert image to numpy array
+    im_arr = np.array(image)
+
+    # Extract the alpha channel
+    alpha_channel = im_arr[:, :, 3]
+
+    # Find rows and columns where alpha is not fully transparent
+    non_transparent_rows = np.where(np.any(alpha_channel > 0, axis=1))[0]
+    non_transparent_cols = np.where(np.any(alpha_channel > 0, axis=0))[0]
+
+    if non_transparent_rows.size == 0 or non_transparent_cols.size == 0:
+        # If no non-transparent pixels are found, return the original image
+        return image
+
+    # Determine the cropping box
+    top, bottom = non_transparent_rows[0], non_transparent_rows[-1] + 1
+    left, right = non_transparent_cols[0], non_transparent_cols[-1] + 1
+
+    # Crop the image
+    cropped_image = image.crop((left, top, right, bottom))
+
+    return cropped_image

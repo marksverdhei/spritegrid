@@ -5,7 +5,7 @@ from typing import Optional
 import requests
 from PIL import Image, ImageDraw
 
-from spritegrid.segmentation import make_background_transparent
+from spritegrid.segmentation import make_background_transparent, crop_to_non_transparent
 
 from .detection import detect_grid
 from .utils import geometric_median, naive_median
@@ -17,7 +17,6 @@ def load_image(image_source: str) -> Optional[Image.Image]:
     Loads an image from a local file path or a URL.
     (Function remains the same)
     """
-    # ... (code is identical to previous version) ...
     try:
         if image_source.startswith(("http://", "https://")):
             response = requests.get(image_source, stream=True, timeout=15)
@@ -57,7 +56,6 @@ def draw_grid_overlay(
     Draws the detected grid lines onto a copy of the original image (for debugging).
     (Function remains the same, but its primary use changes)
     """
-    # ... (code is identical to previous version) ...
     img_copy = image.copy().convert("RGB")
     draw = ImageDraw.Draw(img_copy)
     img_width, img_height = img_copy.size
@@ -266,6 +264,7 @@ def main(
     debug: bool = False,
     quantize: int = 8,
     remove_background: Optional[str] = None,
+    crop: bool = False,  # New argument for cropping
 ) -> None:
     """
     Main function to parse arguments, load image, detect grid, and generate output/debug image.
@@ -287,6 +286,10 @@ def main(
 
     if remove_background == "before":
         image = make_background_transparent(image, debug=False)[0]
+
+    if crop:
+        print("Cropping image to non-transparent regions...")
+        image = crop_to_non_transparent(image)
 
     if image is None:
         sys.exit(1)
