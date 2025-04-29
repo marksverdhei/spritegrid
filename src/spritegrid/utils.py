@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.spatial.distance import cdist, euclidean
+from PIL import Image
 
 
 def naive_median(X: np.ndarray) -> np.ndarray:
@@ -49,3 +50,40 @@ def geometric_median(X: np.ndarray, eps: float = 1e-5) -> np.ndarray:
             return y1
 
         y = y1
+
+
+def crop_to_content(image: Image.Image) -> Image.Image:
+    """
+    Automatically crop an image with an alpha channel to the first and last rows and columns
+    where all pixels aren't transparent.
+
+    Args:
+        image: A PIL Image object with an alpha channel (RGBA mode)
+
+    Returns:
+        A cropped PIL Image object
+    """
+    # Ensure the image has an alpha channel
+    if image.mode != "RGBA":
+        return image
+
+    # Get alpha channel
+    alpha = np.array(image.split()[3])
+
+    # Find the bounding box of non-transparent pixels
+    # Get the non-zero alpha locations
+    non_transparent = np.where(alpha > 0)
+
+    if len(non_transparent[0]) == 0:  # No non-transparent pixels found
+        return image
+
+    # Find the bounding box
+    min_y, max_y = non_transparent[0].min(), non_transparent[0].max()
+    min_x, max_x = non_transparent[1].min(), non_transparent[1].max()
+
+    # Add 1 to max values because PIL's crop is inclusive of the start coordinates
+    # but exclusive of the end coordinates
+    # Crop the image to the bounding box
+    cropped_image = image.crop((min_x, min_y, max_x + 1, max_y + 1))
+
+    return cropped_image

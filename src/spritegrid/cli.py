@@ -60,7 +60,21 @@ def parse_args() -> argparse.Namespace:
         help='Remove background (optionally specify "before" or "after")',
     )
 
+    parser.add_argument(
+        "-c",
+        "--crop",
+        action="store_true",
+        help="Automatically crop the image to the first and last rows and columns where all pixels aren't transparent.",
+    )
+
     args = parser.parse_args()
+
+    # Ensure the crop argument is passed correctly
+    if args.crop and args.remove_background not in [None, "default"]:
+        parser.error(
+            "The --crop option cannot be used with --remove-background set to 'before' or 'after'."
+        )
+
     return args
 
 
@@ -77,6 +91,7 @@ def cli() -> None:
         debug=args.debug,
         quantize=args.quantize,
         remove_background=args.remove_background,
+        crop=args.crop,
     )
 
 
