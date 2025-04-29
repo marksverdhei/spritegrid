@@ -8,7 +8,7 @@ from PIL import Image, ImageDraw
 from spritegrid.segmentation import make_background_transparent
 
 from .detection import detect_grid
-from .utils import geometric_median, naive_median
+from .utils import geometric_median, naive_median, crop_to_content
 import numpy as np
 
 
@@ -266,6 +266,7 @@ def main(
     debug: bool = False,
     quantize: int = 8,
     remove_background: Optional[str] = None,
+    crop: bool = False,
 ) -> None:
     """
     Main function to parse arguments, load image, detect grid, and generate output/debug image.
@@ -350,6 +351,12 @@ def main(
                     print("Background removed successfully.")
                     # Save or show the debug image if needed
                     handle_output(debug_image, output_file, show, is_debug=True)
+
+            # Apply automatic cropping if requested
+            if crop and output_image.mode == "RGBA":
+                print("Automatically cropping the image to non-transparent content...")
+                output_image = crop_to_content(output_image)
+                print(f"Image cropped to {output_image.width}x{output_image.height}")
 
         handle_output(
             output_image,
