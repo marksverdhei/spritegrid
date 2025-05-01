@@ -3,6 +3,29 @@ from scipy.spatial.distance import cdist, euclidean
 from PIL import Image
 
 
+def convert_image_to_ascii(
+    image: Image.Image,
+    ascii_space_width: int = 1,
+) -> str:
+    assert ascii_space_width is not None, "ascii_space_width must be specified"
+    assert ascii_space_width > 0, "ascii_space_width must be greater than 0"
+    width, height = image.size
+    image = image.load()
+    strings = []
+    for y in range(height):
+        for x in range(width):
+            r, g, b, *a = image[x, y]
+            a = a[0] if a else 255
+            if a == 0:
+                # Transparent pixel -> uncolored space
+                strings.append(" ")
+            else:
+                # ANSI escape: background color with truecolor
+                strings.append(f"\x1b[48;2;{r};{g};{b}m \x1b[0m")
+        strings.append("\n")
+    return "".join(strings)
+
+
 def naive_median(X: np.ndarray) -> np.ndarray:
     """
     Returns the naive median of points in X.

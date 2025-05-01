@@ -13,7 +13,6 @@ def test_crop_to_content():
     """Test the automatic cropping of transparent images."""
     # Create a test image with transparent border
     width, height = 100, 80
-    image = Image.new("RGBA", (width, height), (0, 0, 0, 0))  # Fully transparent
 
     # Create a rectangle with non-transparent pixels in the middle
     content_top, content_left = 20, 30

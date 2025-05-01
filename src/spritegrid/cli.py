@@ -67,6 +67,15 @@ def parse_args() -> argparse.Namespace:
         help="Automatically crop the image to the first and last rows and columns where all pixels aren't transparent.",
     )
 
+    parser.add_argument(
+        "-a",
+        "--ascii",
+        nargs="?",
+        choices=[1, 2],
+        const=1,
+        type=int,
+    )
+
     args = parser.parse_args()
 
     # Ensure the crop argument is passed correctly
@@ -92,6 +101,7 @@ def cli() -> None:
         quantize=args.quantize,
         remove_background=args.remove_background,
         crop=args.crop,
+        ascii_space_width=args.ascii,
     )
 
 

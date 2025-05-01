@@ -8,7 +8,12 @@ from PIL import Image, ImageDraw
 from spritegrid.segmentation import make_background_transparent
 
 from .detection import detect_grid
-from .utils import geometric_median, naive_median, crop_to_content
+from .utils import (
+    convert_image_to_ascii,
+    geometric_median,
+    naive_median,
+    crop_to_content,
+)
 import numpy as np
 
 
@@ -217,8 +222,13 @@ def handle_output(
     show_flag: bool,
     is_debug: bool,
     default_title: str = "Spritegrid Output",
+    ascii_space_width: Optional[int] = None,
 ):
     """Helper function to save or show the processed image."""
+    print("Ascii space witdth", ascii_space_width)
+    if filename is not None:
+        if filename.endswith(".txt") and ascii_space_width is None:
+            ascii_space_width = 1
 
     # Default action for debug mode if no other option is chosen
     if is_debug and not filename and not show_flag:
@@ -242,7 +252,6 @@ def handle_output(
                 file=sys.stderr,
             )
 
-    # Show the image if show_flag is true
     if show_flag:
         try:
             type_str = "Debug Overlay" if is_debug else "Downsampled Image"
@@ -257,6 +266,16 @@ def handle_output(
                 file=sys.stderr,
             )
 
+    if ascii_space_width is not None:
+        image_str = convert_image_to_ascii(image_to_process, ascii_space_width)
+        if filename is None:
+            print(image_str)
+        else:
+            if not filename.endswith(".txt"):
+                print("")
+            with open(filename, "w+") as f:
+                f.write(image_str)
+
 
 def main(
     image_source: str,
@@ -267,6 +286,7 @@ def main(
     quantize: int = 8,
     remove_background: Optional[str] = None,
     crop: bool = False,
+    ascii_space_width: Optional[int] = None,
 ) -> None:
     """
     Main function to parse arguments, load image, detect grid, and generate output/debug image.
@@ -324,22 +344,19 @@ def main(
                 f"(Note: Estimated coverage based on cell count is {est_width}x{est_height}, original image is {image.width}x{image.height}. Check results.)"
             )
 
-        # --- Handle Debug or Normal Output ---
         if debug:
             print("\n--- Debug Mode ---")
             output_image = draw_grid_overlay(image, detected_w, detected_h)
         else:
-            # Only generate output image if requested
-            if output_file or show:
-                print("\n--- Generating Downsampled Image ---")
-                output_image = create_downsampled_image(
-                    image,
-                    detected_w,
-                    detected_h,
-                    num_cells_w,
-                    num_cells_h,
-                    quantize,
-                )
+            print("\n--- Generating Downsampled Image ---")
+            output_image = create_downsampled_image(
+                image,
+                detected_w,
+                detected_h,
+                num_cells_w,
+                num_cells_h,
+                quantize,
+            )
 
             if remove_background == "after":
                 print("Removing background from the downsampled image...")
@@ -364,6 +381,7 @@ def main(
             show,
             is_debug=False,
             default_title=f"{image_source} ({num_cells_w}x{num_cells_h})",
+            ascii_space_width=ascii_space_width,
         )
 
     else:
