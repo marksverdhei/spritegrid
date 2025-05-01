@@ -2,7 +2,7 @@ notebooks/
 *.ipynb
 *.png
 !assets/**/*.png
-
+!tests/data/**/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
