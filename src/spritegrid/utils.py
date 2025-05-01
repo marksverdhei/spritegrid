@@ -18,10 +18,10 @@ def convert_image_to_ascii(
             a = a[0] if a else 255
             if a == 0:
                 # Transparent pixel -> uncolored space
-                strings.append(" ")
+                strings.append(" " * ascii_space_width)
             else:
                 # ANSI escape: background color with truecolor
-                strings.append(f"\x1b[48;2;{r};{g};{b}m \x1b[0m")
+                strings.append(f"\x1b[48;2;{r};{g};{b}m" + (" " * ascii_space_width) + "\x1b[0m")
         strings.append("\n")
     return "".join(strings)
 

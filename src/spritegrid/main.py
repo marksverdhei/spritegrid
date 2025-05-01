@@ -217,65 +217,77 @@ def create_downsampled_image(
 
 
 def handle_output(
-    image_to_process: Image.Image,
-    filename: Optional[str],
+    image: Image.Image,
+    save_path: Optional[str],
     show_flag: bool,
     is_debug: bool,
     default_title: str = "Spritegrid Output",
     ascii_space_width: Optional[int] = None,
 ):
     """Helper function to save or show the processed image."""
-    print("Ascii space witdth", ascii_space_width)
-    if filename is not None:
-        if filename.endswith(".txt") and ascii_space_width is None:
+    if save_path is not None:
+        if save_path.endswith(".txt") and ascii_space_width is None:
             ascii_space_width = 1
 
+    show_stdout = (ascii_space_width is not None and save_path is None)
+    show_image = (show_flag or (save_path is None and not show_stdout))
+
     # Default action for debug mode if no other option is chosen
-    if is_debug and not filename and not show_flag:
+    if is_debug and not save_path and not show_flag:
         print("Info: Debug mode active, defaulting to show the overlay image.")
         show_flag = True
 
     # Save the image if filename is provided
-    if filename:
-        try:
-            image_to_process.save(filename)
-            type_str = "Debug overlay" if is_debug else "Downsampled"
-            print(f"Success: {type_str} image saved to '{filename}'")
-        except IOError as e:
-            print(
-                f"Error: Could not save image to '{filename}'. Reason: {e}",
-                file=sys.stderr,
-            )
-        except ValueError as e:  # Catch errors like unknown extension
-            print(
-                f"Error: Could not save image to '{filename}'. Is the file extension valid? Reason: {e}",
-                file=sys.stderr,
-            )
-
-    if show_flag:
-        try:
+    if save_path:
+        if save_path.endswith(".png"):
+            handle_png(image, save_path)
+        elif save_path.endswith(".txt"):
+            image_string = convert_image_to_ascii(image, ascii_space_width)
+            handle_txt(image_string, save_path)
+    else:
+        if show_image:
             type_str = "Debug Overlay" if is_debug else "Downsampled Image"
             title = f"{default_title} - {type_str}"
-            print(
-                f"Displaying {type_str.lower()} (Press Ctrl+C in terminal if viewer doesn't close automatically)..."
-            )
-            image_to_process.show(title=title)
-        except Exception as e:
-            print(
-                f"Error: Could not display image using default viewer. Reason: {e}",
-                file=sys.stderr,
-            )
+            handle_show_image(image, title)
+        
+        if show_stdout:
+            print(convert_image_to_ascii(image, ascii_space_width))
 
-    if ascii_space_width is not None:
-        image_str = convert_image_to_ascii(image_to_process, ascii_space_width)
-        if filename is None:
-            print(image_str)
-        else:
-            if not filename.endswith(".txt"):
-                print("")
-            with open(filename, "w+") as f:
-                f.write(image_str)
 
+def handle_show_image(image: Image.Image, title: str) -> None:
+    try:
+
+        print(
+            f"Displaying {title} (Press Ctrl+C in terminal if viewer doesn't close automatically)..."
+        )
+        image.show(title=title)
+    except Exception as e:
+        print(
+            f"Error: Could not display image using default viewer. Reason: {e}",
+            file=sys.stderr,
+        )
+
+def handle_txt(image_string, save_path) -> None:
+    if not save_path.endswith(".txt"):
+        print(f"Warning: {save_path} does not end with .txt, saving as ascii+ansi codes")
+    with open(save_path, "w+") as f:
+        f.write(image_string)
+
+
+def handle_png(image: Image.Image, save_path: str) -> None:
+    try:
+        image.save(save_path)
+        print(f"Success: image saved to '{save_path}'")
+    except IOError as e:
+        print(
+            f"Error: Could not save image to '{save_path}'. Reason: {e}",
+            file=sys.stderr,
+        )
+    except ValueError as e:  # Catch errors like unknown extension
+        print(
+            f"Error: Could not save image to '{save_path}'. Is the file extension valid? Reason: {e}",
+            file=sys.stderr,
+        )
 
 def main(
     image_source: str,
@@ -364,10 +376,7 @@ def main(
                 output_image, debug_image = make_background_transparent(
                     output_image, debug=True
                 )
-                if debug_image:
-                    print("Background removed successfully.")
-                    # Save or show the debug image if needed
-                    handle_output(debug_image, output_file, show, is_debug=True)
+                print("Background removed successfully.")
 
             # Apply automatic cropping if requested
             if crop and output_image.mode == "RGBA":
@@ -375,14 +384,24 @@ def main(
                 output_image = crop_to_content(output_image)
                 print(f"Image cropped to {output_image.width}x{output_image.height}")
 
-        handle_output(
-            output_image,
-            output_file,
-            show,
-            is_debug=False,
-            default_title=f"{image_source} ({num_cells_w}x{num_cells_h})",
-            ascii_space_width=ascii_space_width,
-        )
+        if debug:
+            handle_output(
+                debug_image,
+                output_file,
+                show,
+                is_debug=True,
+                default_title=f"{image_source} ({num_cells_w}x{num_cells_h})",
+                ascii_space_width=ascii_space_width,
+            )
+        else:
+            handle_output(
+                output_image,
+                output_file,
+                show,
+                is_debug=False,
+                default_title=f"{image_source} ({num_cells_w}x{num_cells_h})",
+                ascii_space_width=ascii_space_width,
+            )
 
     else:
         print("\n--- Failure ---")
