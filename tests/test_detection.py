@@ -45,8 +45,6 @@ def test_detect_grid():
     img_w, img_h = 25, 25
     grid_w, grid_h = 5, 5
     image = create_test_image(img_w, img_h, grid_w, grid_h)
-    # image.show()
-    image.save("test_image.png")
 
     detected_w, detected_h = detect_grid(image, min_grid_size=1)
 
