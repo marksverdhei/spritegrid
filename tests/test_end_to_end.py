@@ -6,7 +6,7 @@ from PIL import Image
 
 def test_spritegrid_cli(tmp_path):
     # Setup paths
-    input_image = Path("assets/examples/centurion.png")
+    input_image = Path("tests/data/input/centurion.png")
     output_file = tmp_path / "output.png"
     
     # Run CLI command with proper arguments
@@ -30,6 +30,19 @@ def test_spritegrid_cli(tmp_path):
         assert img.width > 0 and img.height > 0, "Output image has invalid dimensions"
     except Exception as e:
         pytest.fail(f"Output file is not a valid image: {e}")
+
+    # Compare with expected image
+    expected_image = Path("tests/data/expected/centurion-default.png")
+    assert expected_image.exists(), "Expected image does not exist"
+
+    expected_img = Image.open(expected_image)
+    output_img = Image.open(output_file)
+
+    # Compare dimensions
+    assert output_img.width == expected_img.width and output_img.height == expected_img.height, "Image dimensions do not match expected"
+
+    # Compare pixel data
+    assert list(output_img.getdata()) == list(expected_img.getdata()), "Image content does not match expected"
 
 def test_spritegrid_cli_with_background_removal(tmp_path):
     """Test CLI with background removal before processing."""
@@ -58,10 +71,23 @@ def test_spritegrid_cli_with_background_removal(tmp_path):
     except Exception as e:
         pytest.fail(f"Output file is not a valid image: {e}")
 
+    # Compare with expected image
+    expected_image = Path("tests/data/expected/centurion-b.png")
+    assert expected_image.exists(), "Expected image does not exist"
+
+    expected_img = Image.open(expected_image)
+    output_img = Image.open(output_file)
+
+    # Compare dimensions
+    assert output_img.width == expected_img.width and output_img.height == expected_img.height, "Image dimensions do not match expected"
+
+    # Compare pixel data
+    assert list(output_img.getdata()) == list(expected_img.getdata()), "Image content does not match expected"
+
 def test_spritegrid_cli_with_cropping(tmp_path):
     """Test CLI with automatic cropping."""
     # Setup paths
-    input_image = Path("assets/examples/centurion.png")
+    input_image = Path("tests/data/input/centurion.png")
     output_file = tmp_path / "output.png"
     
     # Run CLI command with cropping
@@ -88,10 +114,23 @@ def test_spritegrid_cli_with_cropping(tmp_path):
     except Exception as e:
         pytest.fail(f"Output file is not a valid image: {e}")
 
+    # Compare with expected image
+    expected_image = Path("tests/data/expected/centurion.png")
+    assert expected_image.exists(), "Expected image does not exist"
+
+    expected_img = Image.open(expected_image)
+    output_img = Image.open(output_file)
+
+    # Compare dimensions
+    assert output_img.width == expected_img.width and output_img.height == expected_img.height, "Image dimensions do not match expected"
+
+    # Compare pixel data
+    assert list(output_img.getdata()) == list(expected_img.getdata()), "Image content does not match expected"
+
 def test_spritegrid_cli_with_ascii_output(tmp_path):
     """Test CLI with ASCII text output."""
     # Setup paths
-    input_image = Path("assets/examples/centurion.png")
+    input_image = Path("tests/data/input/centurion.png")
     output_file = tmp_path / "output.txt"
     
     # Run CLI command with ASCII output
@@ -112,3 +151,12 @@ def test_spritegrid_cli_with_ascii_output(tmp_path):
     with open(output_file, 'r') as f:
         content = f.read()
         assert len(content) > 0, "ASCII output file is empty"
+
+    # Compare with expected text
+    expected_text = Path("tests/data/expected/centurion-ansi.txt")
+    assert expected_text.exists(), "Expected text file does not exist"
+
+    with open(expected_text, 'r') as f:
+        expected_content = f.read()
+
+    assert content == expected_content, "ASCII output does not match expected text"
