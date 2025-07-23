@@ -15,20 +15,34 @@ def convert_image_to_ascii(
     strings = []
     yr, xr = range(height), range(width)
 
+    reset_needed = False
     for y in yr:
         for x in xr:
             r, g, b, *a = image[x, y]
             a = a[0] if a else 255
             if a == 0:
+                s = " " * ascii_space_width
+                if reset_needed:
+                    s = "\x1b[0m" + s
+
                 # Transparent pixel -> uncolored space
-                strings.append(" " * ascii_space_width)
+                strings.append(s)
+                reset_needed = False
             else:
                 s = f"\x1b[48;2;{r};{g};{b}m" + (" " * ascii_space_width)
 
-                if reset_after_each_pixel or (x == xr[-1]):
+                # s += "\x1b[0m"
+                if reset_after_each_pixel:
                     s += "\x1b[0m"
+                else:
+                    reset_needed = True
+
                 strings.append(s)
+
+        if not reset_after_each_pixel:
+            strings.append("\x1b[0m")
         strings.append("\n")
+
     return "".join(strings)
 
 

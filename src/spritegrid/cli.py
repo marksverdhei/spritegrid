@@ -101,7 +101,7 @@ def cli() -> None:
         quantize=args.quantize,
         remove_background=args.remove_background,
         crop=args.crop,
-        ascii_space_width=args.ascii,
+        ascii_space_width=args.ascii or 1,
     )
 
 
