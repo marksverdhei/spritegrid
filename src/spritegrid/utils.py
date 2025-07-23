@@ -39,8 +39,9 @@ def convert_image_to_ascii(
 
                 strings.append(s)
 
-        if not reset_after_each_pixel:
+        if reset_needed:
             strings.append("\x1b[0m")
+            reset_needed = False
         strings.append("\n")
 
     return "".join(strings)
