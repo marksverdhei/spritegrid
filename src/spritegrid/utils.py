@@ -7,6 +7,7 @@ def convert_image_to_ascii(
     image: Image.Image,
     ascii_space_width: int = 1,
     reset_after_each_pixel: bool = False,
+    character: str = " "
 ) -> str:
     assert ascii_space_width is not None, "ascii_space_width must be specified"
     assert ascii_space_width > 0, "ascii_space_width must be greater than 0"
@@ -14,6 +15,10 @@ def convert_image_to_ascii(
     image = image.load()
     strings = []
     yr, xr = range(height), range(width)
+    if character == " ":
+        templ = "\x1b[48;2;{};{};{}m"
+    else:
+        templ = "\x1b[38;2;{};{};{}m"
 
     reset_needed = False
     for y in yr:
@@ -29,7 +34,7 @@ def convert_image_to_ascii(
                 strings.append(s)
                 reset_needed = False
             else:
-                s = f"\x1b[48;2;{r};{g};{b}m" + (" " * ascii_space_width)
+                s = templ.format(r, g, b) + (character * ascii_space_width)
 
                 # s += "\x1b[0m"
                 if reset_after_each_pixel:
