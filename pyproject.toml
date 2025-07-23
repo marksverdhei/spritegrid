@@ -3,7 +3,7 @@ name = "spritegrid"
 version = "0.2.0"
 description = "A command line tool for turning AI-generated pixel art into real pixel art."
 readme = "README.md"
-requires-python = ">=3.9"
+# requires-python = ">=3.9"
 dependencies = [
     "matplotlib>=3.10.1",
     "opencv-python>=4.11.0.86",
