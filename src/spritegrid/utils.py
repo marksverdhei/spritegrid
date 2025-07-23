@@ -6,22 +6,28 @@ from PIL import Image
 def convert_image_to_ascii(
     image: Image.Image,
     ascii_space_width: int = 1,
+    reset_after_each_pixel: bool = False,
 ) -> str:
     assert ascii_space_width is not None, "ascii_space_width must be specified"
     assert ascii_space_width > 0, "ascii_space_width must be greater than 0"
     width, height = image.size
     image = image.load()
     strings = []
-    for y in range(height):
-        for x in range(width):
+    yr, xr = range(height), range(width)
+
+    for y in yr:
+        for x in xr:
             r, g, b, *a = image[x, y]
             a = a[0] if a else 255
             if a == 0:
                 # Transparent pixel -> uncolored space
                 strings.append(" " * ascii_space_width)
             else:
-                # ANSI escape: background color with truecolor
-                strings.append(f"\x1b[48;2;{r};{g};{b}m" + (" " * ascii_space_width) + "\x1b[0m")
+                s = f"\x1b[48;2;{r};{g};{b}m" + (" " * ascii_space_width)
+
+                if reset_after_each_pixel or (x == xr[-1]):
+                    s += "\x1b[0m"
+                strings.append(s)
         strings.append("\n")
     return "".join(strings)
 

@@ -217,17 +217,16 @@ def create_downsampled_image(
 
 
 def handle_output(
-    image: Image.Image,
+    image: Image.Image | None,
     save_path: Optional[str],
     show_flag: bool,
     is_debug: bool,
     default_title: str = "Spritegrid Output",
-    ascii_space_width: Optional[int] = None,
+    ascii_space_width: int = 1,
 ):
     """Helper function to save or show the processed image."""
-    if save_path is not None:
-        if save_path.endswith(".txt") and ascii_space_width is None:
-            ascii_space_width = 1
+    if image is None:
+        return
 
     show_stdout = (ascii_space_width is not None and save_path is None)
     show_image = (show_flag or (save_path is None and not show_stdout))
@@ -385,23 +384,16 @@ def main(
                 print(f"Image cropped to {output_image.width}x{output_image.height}")
 
         if debug:
-            handle_output(
-                debug_image,
-                output_file,
-                show,
-                is_debug=True,
-                default_title=f"{image_source} ({num_cells_w}x{num_cells_h})",
-                ascii_space_width=ascii_space_width,
-            )
-        else:
-            handle_output(
-                output_image,
-                output_file,
-                show,
-                is_debug=False,
-                default_title=f"{image_source} ({num_cells_w}x{num_cells_h})",
-                ascii_space_width=ascii_space_width,
-            )
+            output_image = debug_image
+
+        handle_output(
+            output_image,
+            output_file,
+            show,
+            is_debug=debug,
+            default_title=f"{image_source} ({num_cells_w}x{num_cells_h})",
+            ascii_space_width=ascii_space_width,
+        )
 
     else:
         print("\n--- Failure ---")
