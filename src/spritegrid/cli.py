@@ -107,6 +107,7 @@ def cli() -> None:
         remove_background=args.remove_background,
         crop=args.crop,
         ascii_space_width=args.ascii or 1,
+        noscale=args.no_scale,
     )
 
 
