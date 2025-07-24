@@ -76,6 +76,11 @@ def parse_args() -> argparse.Namespace:
         type=int,
     )
 
+    parser.add_argument(
+        "--no-scale",
+        action="store_true",
+        help="Skip scaling, only apply other transformations."
+    )
     args = parser.parse_args()
 
     # Ensure the crop argument is passed correctly

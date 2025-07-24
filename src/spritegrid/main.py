@@ -222,7 +222,7 @@ def handle_output(
     show_flag: bool,
     is_debug: bool,
     default_title: str = "Spritegrid Output",
-    ascii_space_width: int = 1,
+    ascii_space_width: Optional[int] = None,
 ):
     """Helper function to save or show the processed image."""
     if image is None:
@@ -240,7 +240,8 @@ def handle_output(
     if save_path:
         if save_path.endswith(".png"):
             handle_png(image, save_path)
-        elif save_path.endswith(".txt"):
+        elif save_path.endswith(".txt") or ascii_space_width:
+            ascii_space_width = ascii_space_width or 1 
             image_string = convert_image_to_ascii(image, ascii_space_width)
             handle_txt(image_string, save_path)
     else:
@@ -298,6 +299,7 @@ def main(
     remove_background: Optional[str] = None,
     crop: bool = False,
     ascii_space_width: Optional[int] = None,
+    noscale: bool = False,
 ) -> None:
     """
     Main function to parse arguments, load image, detect grid, and generate output/debug image.
@@ -317,85 +319,94 @@ def main(
     print(f"Loading image from: {image_source}")
     image = load_image(image_source)
 
-    if remove_background == "before":
-        image = make_background_transparent(image, debug=False)[0]
 
     if image is None:
         sys.exit(1)
+
+    if remove_background == "before":
+        image = make_background_transparent(image, debug=False)[0]
 
     print(
         f"Image loaded successfully ({image.width}x{image.height}, Mode: {image.mode})."
     )
 
     # Call the grid detection function from the detection module
-    detected_w, detected_h = detect_grid(image, min_grid_size=min_grid)
-
-    # Check the results returned by detect_grid
-    if detected_w > 0 and detected_h > 0:
-        print("\n--- Result ---")
-        print(
-            f"Detected Grid Dimensions (W x H): {detected_w} x {detected_h} pixels per grid cell"
-        )
-
-        # Estimate number of cells
-        num_cells_w = round(image.width / detected_w)
-        num_cells_h = round(image.height / detected_h)
-        # Ensure at least 1 cell if rounding leads to 0
-        num_cells_w = max(1, num_cells_w)
-        num_cells_h = max(1, num_cells_h)
-
-        print(f"Estimated Output Grid: {num_cells_w} x {num_cells_h} cells")
-        est_width = num_cells_w * detected_w
-        est_height = num_cells_h * detected_h
-        if (
-            abs(est_width - image.width) > detected_w / 2
-            or abs(est_height - image.height) > detected_h / 2
-        ):
-            print(
-                f"(Note: Estimated coverage based on cell count is {est_width}x{est_height}, original image is {image.width}x{image.height}. Check results.)"
-            )
-
-        if debug:
-            print("\n--- Debug Mode ---")
-            output_image = draw_grid_overlay(image, detected_w, detected_h)
-        else:
-            print("\n--- Generating Downsampled Image ---")
-            output_image = create_downsampled_image(
-                image,
-                detected_w,
-                detected_h,
-                num_cells_w,
-                num_cells_h,
-                quantize,
-            )
-
-            if remove_background == "after":
-                print("Removing background from the downsampled image...")
-                # Call the background removal function
-                output_image, debug_image = make_background_transparent(
-                    output_image, debug=True
-                )
-                print("Background removed successfully.")
-
-            # Apply automatic cropping if requested
-            if crop and output_image.mode == "RGBA":
-                print("Automatically cropping the image to non-transparent content...")
-                output_image = crop_to_content(output_image)
-                print(f"Image cropped to {output_image.width}x{output_image.height}")
-
-        if debug:
-            output_image = debug_image
-
-        handle_output(
-            output_image,
-            output_file,
-            show,
-            is_debug=debug,
-            default_title=f"{image_source} ({num_cells_w}x{num_cells_h})",
-            ascii_space_width=ascii_space_width,
-        )
-
+    if noscale:
+        output_image = image
     else:
+        output_image = downscale(image, min_grid, debug, quantize, crop)
+
+    if remove_background == "after":
+        print("Removing background from the downsampled image...")
+        # Call the background removal function
+        output_image, debug_image = make_background_transparent(
+            output_image, debug=True
+        )
+        print("Background removed successfully.")
+
+    if debug:
+        output_image = debug_image
+
+    handle_output(
+        output_image,
+        output_file,
+        show,
+        is_debug=debug,
+        # default_title=f"{image_source} ({num_cells_w}x{num_cells_h})",
+        default_title=f"{image_source} (downscaled)",
+        ascii_space_width=ascii_space_width,
+    )
+
+
+def downscale(image, min_grid, debug, quantize, crop):
+    detected_w, detected_h = detect_grid(image, min_grid_size=min_grid)
+    # Check the results returned by detect_grid
+    if detected_w < 0 or detected_h < 0:
         print("\n--- Failure ---")
         print("Could not reliably determine grid dimensions.")
         sys.exit(1)  # Exit with error code if detection failed
+
+    print("\n--- Result ---")
+    print(
+        f"Detected Grid Dimensions (W x H): {detected_w} x {detected_h} pixels per grid cell"
+    )
+
+    # Estimate number of cells
+    num_cells_w = round(image.width / detected_w)
+    num_cells_h = round(image.height / detected_h)
+    # Ensure at least 1 cell if rounding leads to 0
+    num_cells_w = max(1, num_cells_w)
+    num_cells_h = max(1, num_cells_h)
+
+    print(f"Estimated Output Grid: {num_cells_w} x {num_cells_h} cells")
+    est_width = num_cells_w * detected_w
+    est_height = num_cells_h * detected_h
+    if (
+        abs(est_width - image.width) > detected_w / 2
+        or abs(est_height - image.height) > detected_h / 2
+    ):
+        print(
+            f"(Note: Estimated coverage based on cell count is {est_width}x{est_height}, original image is {image.width}x{image.height}. Check results.)"
+        )
+
+    if debug:
+        print("\n--- Debug Mode ---")
+        output_image = draw_grid_overlay(image, detected_w, detected_h)
+    else:
+        print("\n--- Generating Downsampled Image ---")
+        output_image = create_downsampled_image(
+            image,
+            detected_w,
+            detected_h,
+            num_cells_w,
+            num_cells_h,
+            quantize,
+        )
+
+        # Apply automatic cropping if requested
+        if crop and output_image.mode == "RGBA":
+            print("Automatically cropping the image to non-transparent content...")
+            output_image = crop_to_content(output_image)
+            print(f"Image cropped to {output_image.width}x{output_image.height}")
+
+    return output_image
