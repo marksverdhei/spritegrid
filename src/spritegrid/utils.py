@@ -52,6 +52,37 @@ def convert_image_to_ascii(
     return "".join(strings)
 
 
+def convert_image_to_ascii_half_block(
+    image: Image.Image,
+) -> str:
+    width, height = image.size
+    image = image.load()
+    strings = []
+    for y in range(0, height, 2):
+        for x in range(width):
+            r1, g1, b1, *a1 = image[x, y]
+            a1 = a1[0] if a1 else 255
+
+            if y + 1 < height:
+                r2, g2, b2, *a2 = image[x, y+1]
+                a2 = a2[0] if a2 else 255
+            else:
+                r2, g2, b2, a2 = 0, 0, 0, 0
+
+            if a1 == 0 and a2 == 0:
+                strings.append(" ")
+            elif a1 == 0:
+                # Upper pixel is transparent, lower is not
+                strings.append(f"\x1b[38;2;{r2};{g2};{b2}m\u2584")
+            elif a2 == 0:
+                # Lower pixel is transparent, upper is not
+                strings.append(f"\x1b[38;2;{r1};{g1};{b1}m\u2580")
+            else:
+                # Both pixels are colored
+                strings.append(f"\x1b[48;2;{r1};{g1};{b1}m\x1b[38;2;{r2};{g2};{b2}m\u2584")
+        strings.append("\x1b[0m\n")
+    return "".join(strings)
+
 def naive_median(X: np.ndarray) -> np.ndarray:
     """
     Returns the naive median of points in X.

@@ -10,6 +10,7 @@ from spritegrid.segmentation import make_background_transparent
 from .detection import detect_grid
 from .utils import (
     convert_image_to_ascii,
+    convert_image_to_ascii_half_block,
     geometric_median,
     naive_median,
     crop_to_content,
@@ -223,13 +224,13 @@ def handle_output(
     is_debug: bool,
     default_title: str = "Spritegrid Output",
     ascii_space_width: Optional[int] = None,
+    ascii_half_block: bool = False,
 ):
     """Helper function to save or show the processed image."""
     if image is None:
         return
 
-    show_stdout = (ascii_space_width is not None and save_path is None)
-    show_image = (show_flag or (save_path is None and not show_stdout))
+    show_image = (show_flag or (save_path is None and not ascii_space_width))
 
     # Default action for debug mode if no other option is chosen
     if is_debug and not save_path and not show_flag:
@@ -241,17 +242,22 @@ def handle_output(
         if save_path.endswith(".png"):
             handle_png(image, save_path)
         elif save_path.endswith(".txt") or ascii_space_width:
-            ascii_space_width = ascii_space_width or 1 
-            image_string = convert_image_to_ascii(image, ascii_space_width)
+            if ascii_half_block:
+                image_string = convert_image_to_ascii_half_block(image)
+            else:
+                ascii_space_width = ascii_space_width or 1
+                image_string = convert_image_to_ascii(image, ascii_space_width)
             handle_txt(image_string, save_path)
     else:
         if show_image:
             type_str = "Debug Overlay" if is_debug else "Downsampled Image"
             title = f"{default_title} - {type_str}"
             handle_show_image(image, title)
-        
-        if show_stdout:
-            print(convert_image_to_ascii(image, ascii_space_width))
+        if ascii_space_width:
+            if ascii_half_block:
+                print(convert_image_to_ascii_half_block(image))
+            else:
+                print(convert_image_to_ascii(image, ascii_space_width))
 
 
 def handle_show_image(image: Image.Image, title: str) -> None:
@@ -266,6 +272,7 @@ def handle_show_image(image: Image.Image, title: str) -> None:
             f"Error: Could not display image using default viewer. Reason: {e}",
             file=sys.stderr,
         )
+
 
 def handle_txt(image_string, save_path) -> None:
     if not save_path.endswith(".txt"):
@@ -289,6 +296,7 @@ def handle_png(image: Image.Image, save_path: str) -> None:
             file=sys.stderr,
         )
 
+
 def main(
     image_source: str,
     min_grid: int = 4,
@@ -299,6 +307,7 @@ def main(
     remove_background: Optional[str] = None,
     crop: bool = False,
     ascii_space_width: Optional[int] = None,
+    ascii_half_block: bool = False,
     noscale: bool = False,
 ) -> None:
     """
@@ -355,6 +364,7 @@ def main(
         # default_title=f"{image_source} ({num_cells_w}x{num_cells_h})",
         default_title=f"{image_source} (downscaled)",
         ascii_space_width=ascii_space_width,
+        ascii_half_block=ascii_half_block,
     )
 
 
@@ -362,11 +372,11 @@ def downscale(image, min_grid, debug, quantize, crop):
     detected_w, detected_h = detect_grid(image, min_grid_size=min_grid)
     # Check the results returned by detect_grid
     if detected_w < 0 or detected_h < 0:
-        print("\n--- Failure ---")
+        print("--- Failure ---")
         print("Could not reliably determine grid dimensions.")
         sys.exit(1)  # Exit with error code if detection failed
 
-    print("\n--- Result ---")
+    print("--- Result ---")
     print(
         f"Detected Grid Dimensions (W x H): {detected_w} x {detected_h} pixels per grid cell"
     )
@@ -390,10 +400,10 @@ def downscale(image, min_grid, debug, quantize, crop):
         )
 
     if debug:
-        print("\n--- Debug Mode ---")
+        print("--- Debug Mode ---")
         output_image = draw_grid_overlay(image, detected_w, detected_h)
     else:
-        print("\n--- Generating Downsampled Image ---")
+        print("--- Generating Downsampled Image ---")
         output_image = create_downsampled_image(
             image,
             detected_w,

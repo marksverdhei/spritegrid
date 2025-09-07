@@ -71,9 +71,10 @@ def parse_args() -> argparse.Namespace:
         "-a",
         "--ascii",
         nargs="?",
-        choices=[1, 2],
-        const=1,
-        type=int,
+        choices=["simple", "half-block"],
+        const="half-block",
+        default=None,
+        help="Generate ASCII art. Default is 'half-block'. 'simple' uses spaces.",
     )
 
     parser.add_argument(
@@ -106,7 +107,8 @@ def cli() -> None:
         quantize=args.quantize,
         remove_background=args.remove_background,
         crop=args.crop,
-        ascii_space_width=args.ascii or 1,
+        ascii_space_width=2 if args.ascii == "simple" else (1 if args.ascii else None),
+        ascii_half_block=args.ascii == "half-block",
         noscale=args.no_scale,
     )
 
