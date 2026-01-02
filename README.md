@@ -35,17 +35,65 @@ pip install spritegrid
 
 ## Usage
 
-Basic
+### Grid Detection & Downsampling
+
+Use `spritegrid` to detect pixel grids in AI-generated pixel art and downsample to clean sprites:
+
+Basic usage:
 ```bash
-spritegrid assets/examples/centurion.png -o centurion.png
+spritegrid ai_pixelart.png -o clean_sprite.png
 ```
 
-With background removal
+With background removal:
 ```bash
-spritegrid assets/examples/centurion.png -b -o centurion.png
+spritegrid ai_pixelart.png -b -o clean_sprite.png
 ```
 
-You can resize the image afterwards with, e.g. imagemagick
+You can resize the output afterwards with imagemagick:
 ```bash
 convert pixel-art.png -filter point -resize 400% pixel-art-large.png
 ```
+
+### AI Image to Sprite Conversion
+
+Use `spritegrid-crop` to convert AI-generated images (from Imagen, Flux, SDXL, etc.) into clean pixel art sprites:
+
+**Command Line:**
+```bash
+# Convert to 32x32 sprite
+spritegrid-crop ai_image.png -o sprite.png -s 32
+
+# Convert to 64x48 sprite with padding
+spritegrid-crop ai_image.png -o sprite.png -s 64x48 -p 5
+
+# Center on exact canvas size
+spritegrid-crop ai_image.png -o sprite.png -s 64 --center
+```
+
+**Python API:**
+```python
+from spritegrid import process_sprite, crop_and_scale
+from PIL import Image
+
+# Method 1: Full pipeline with AI background removal
+img = Image.open("ai_generated.png")
+sprite = process_sprite(img, size=32, remove_bg=True)
+sprite.save("sprite_32x32.png")
+
+# Method 2: Crop and scale without background removal
+img = Image.open("character.png")
+sprite = crop_and_scale(img, target_size=64, padding=5)
+sprite.save("character_64.png")
+
+# Method 3: Centered on canvas
+from spritegrid import crop_and_scale_centered
+sprite = crop_and_scale_centered(img, target_size=64)
+sprite.save("centered_sprite.png")
+```
+
+**Options:**
+- `-s, --size`: Target size (e.g., `32` for 32x32, or `64x48` for non-square)
+- `-p, --padding`: Padding around content before scaling
+- `--center`: Center sprite on exact canvas size
+- `--no-aspect`: Force exact size without maintaining aspect ratio
+- `--alpha-threshold`: Alpha threshold for transparency detection (default: 0)
