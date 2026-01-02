@@ -22,8 +22,17 @@ def remove_background(image: Image.Image) -> Image.Image:
 
     Returns:
         RGBA image with background removed (transparent)
+
+    Raises:
+        ImportError: If rembg is not installed
     """
-    from rembg import remove
+    try:
+        from rembg import remove
+    except ImportError:
+        raise ImportError(
+            "rembg is required for background removal. "
+            "Install it with: pip install rembg onnxruntime"
+        )
     return remove(image.convert("RGBA"))
 
 
@@ -191,15 +200,118 @@ def process_sprite(
     return result
 
 
-# Aliases for backwards compatibility
-crop_and_scale = process_sprite
-crop_and_scale_centered = process_sprite
+def crop_and_scale(
+    image: Image.Image,
+    target_size: Union[int, Tuple[int, int]] = 32,
+    padding: int = 0,
+    background_color: Optional[Tuple[int, ...]] = None,
+    alpha_threshold: int = 0,
+    color_tolerance: int = 0,
+    maintain_aspect: bool = True,
+) -> Image.Image:
+    """
+    Crop image to content and scale to target size.
+
+    Args:
+        image: Source image
+        target_size: Target size (int for square, or (w, h) tuple)
+        padding: Padding around content before scaling
+        background_color: Background color to remove (RGB or RGBA tuple)
+        alpha_threshold: Alpha threshold for transparency detection
+        color_tolerance: Color distance tolerance for background detection
+        maintain_aspect: Maintain aspect ratio when scaling
+
+    Returns:
+        Cropped and scaled image
+
+    Note:
+        background_color and color_tolerance are reserved for future use.
+    """
+    # Convert to RGBA if needed
+    if image.mode != "RGBA":
+        image = image.convert("RGBA")
+
+    # Crop to content
+    cropped = crop_to_content(image, padding=padding, alpha_threshold=alpha_threshold)
+
+    # Determine target dimensions
+    if isinstance(target_size, int):
+        if maintain_aspect:
+            # Fit within square maintaining aspect
+            w, h = cropped.size
+            ratio = min(target_size / w, target_size / h)
+            final_size = (max(1, int(w * ratio)), max(1, int(h * ratio)))
+        else:
+            final_size = (target_size, target_size)
+    else:
+        if maintain_aspect:
+            # Fit within target size maintaining aspect
+            w, h = cropped.size
+            ratio = min(target_size[0] / w, target_size[1] / h)
+            final_size = (max(1, int(w * ratio)), max(1, int(h * ratio)))
+        else:
+            final_size = target_size
+
+    # Scale with nearest neighbor
+    scaled = scale_nearest(cropped, final_size)
+
+    return scaled
+
+
+def crop_and_scale_centered(
+    image: Image.Image,
+    target_size: Union[int, Tuple[int, int]] = 32,
+    padding: int = 0,
+    background_color: Optional[Tuple[int, ...]] = None,
+    alpha_threshold: int = 0,
+    color_tolerance: int = 0,
+) -> Image.Image:
+    """
+    Crop image to content, scale, and center on canvas of exact target size.
+
+    Args:
+        image: Source image
+        target_size: Canvas size (int for square, or (w, h) tuple)
+        padding: Padding around content before scaling
+        background_color: Background color to remove (RGB or RGBA tuple)
+        alpha_threshold: Alpha threshold for transparency detection
+        color_tolerance: Color distance tolerance for background detection
+
+    Returns:
+        Cropped, scaled, and centered image on target-sized canvas
+
+    Note:
+        background_color and color_tolerance are reserved for future use.
+    """
+    # First crop and scale with aspect maintained
+    scaled = crop_and_scale(
+        image,
+        target_size=target_size,
+        padding=padding,
+        background_color=background_color,
+        alpha_threshold=alpha_threshold,
+        color_tolerance=color_tolerance,
+        maintain_aspect=True,
+    )
+
+    # Then center on canvas
+    return center_on_canvas(scaled, target_size)
 
 
 def batch_process(
     images: list,
     size: int = 32,
     **kwargs,
-) -> list:
-    """Process multiple images."""
+) -> list[Image.Image]:
+    """
+    Process multiple images.
+
+    Args:
+        images: List of PIL Images
+        size: Target size for all images
+        **kwargs: Additional arguments passed to process_sprite
+
+    Returns:
+        List of processed PIL Images
+    """
     return [process_sprite(img, size=size, **kwargs) for img in images]
