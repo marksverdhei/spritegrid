@@ -110,3 +110,70 @@ def crop_to_content(image: Image.Image) -> Image.Image:
     cropped_image = image.crop((min_x, min_y, max_x + 1, max_y + 1))
 
     return cropped_image
+
+
+def enforce_symmetry(image: Image.Image) -> Image.Image:
+    """
+    Enforce horizontal symmetry on an image using confidence-based consensus.
+
+    For each pair of horizontally mirrored pixels, if they differ, the pixel
+    with higher "confidence" (further from the decision boundary between colors)
+    is used for both positions.
+
+    This is useful for pixel art that should be symmetric but has minor
+    asymmetries from AI upscaling artifacts.
+
+    Args:
+        image: A PIL Image object (RGB or RGBA mode)
+
+    Returns:
+        A new PIL Image with enforced horizontal symmetry
+    """
+    if image.mode not in ["RGB", "RGBA"]:
+        image = image.convert("RGBA")
+
+    arr = np.array(image)
+    h, w = arr.shape[:2]
+    has_alpha = arr.shape[2] == 4
+
+    # Calculate confidence for each pixel
+    # Confidence = how "decisive" the color is (distance from gray/ambiguous)
+    def pixel_confidence(pixel):
+        if has_alpha and pixel[3] < 128:
+            return 0  # Transparent pixels have no confidence
+
+        r, g, b = pixel[0], pixel[1], pixel[2]
+
+        # Confidence based on saturation and distance from middle gray
+        max_c, min_c = max(r, g, b), min(r, g, b)
+        saturation = (max_c - min_c) if max_c > 0 else 0
+
+        # Distance from middle gray (128, 128, 128)
+        brightness = (int(r) + int(g) + int(b)) / 3
+        gray_distance = abs(brightness - 128)
+
+        # Combined confidence: high saturation OR very dark/bright
+        return saturation + gray_distance
+
+    # Process each mirror pair
+    result = arr.copy()
+
+    for y in range(h):
+        for x in range(w // 2):
+            mx = w - 1 - x  # Mirror x position
+
+            p1 = arr[y, x]
+            p2 = arr[y, mx]
+
+            # Check if pixels are different
+            if not np.array_equal(p1, p2):
+                c1 = pixel_confidence(p1)
+                c2 = pixel_confidence(p2)
+
+                # Use the pixel with higher confidence for both positions
+                if c1 >= c2:
+                    result[y, mx] = p1
+                else:
+                    result[y, x] = p2
+
+    return Image.fromarray(result, image.mode)
