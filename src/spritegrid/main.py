@@ -333,6 +333,23 @@ def main(
 
     # Check the results returned by detect_grid
     if detected_w > 0 and detected_h > 0:
+        # Check grid aspect ratio - a genuine pixel art grid should be roughly square
+        grid_ratio = detected_w / detected_h
+        if grid_ratio < 0.5 or grid_ratio > 2.0:
+            print(f"\n--- Skipping ---")
+            print(f"Detected grid {detected_w}x{detected_h} has inconsistent aspect ratio ({grid_ratio:.2f}).")
+            print("Image appears to be already clean pixel art. Returning unchanged.")
+            # Save/show the original image
+            handle_output(
+                image,
+                output_file,
+                show,
+                is_debug=False,
+                default_title=f"{image_source} (unchanged)",
+                ascii_space_width=ascii_space_width,
+            )
+            return
+
         print("\n--- Result ---")
         print(
             f"Detected Grid Dimensions (W x H): {detected_w} x {detected_h} pixels per grid cell"
