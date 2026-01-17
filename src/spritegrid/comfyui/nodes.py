@@ -78,13 +78,7 @@ class SpriteGrid:
         grid_w, grid_h = detect_grid(pil_img, min_grid_size=min_grid)
 
         if grid_w <= 0 or grid_h <= 0:
-            # Detection failed, return original
-            return (image,)
-
-        # Check grid aspect ratio - genuine pixel art grids are roughly square
-        grid_ratio = grid_w / grid_h
-        if grid_ratio < 0.5 or grid_ratio > 2.0:
-            # Inconsistent grid suggests image is already clean pixel art
+            # No grid detected - image is likely already clean pixel art
             return (pil_to_tensor(pil_img),)
 
         # Calculate cells
