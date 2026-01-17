@@ -85,15 +85,19 @@ class SpriteGrid:
         num_cells_w = max(1, round(pil_img.width / grid_w))
         num_cells_h = max(1, round(pil_img.height / grid_h))
 
-        # Downsample
-        result = create_downsampled_image(
-            pil_img,
-            grid_w,
-            grid_h,
-            num_cells_w,
-            num_cells_h,
-            bit=quantize,
-        )
+        # Idempotence check: if output matches input dimensions, image is already clean
+        if num_cells_w == pil_img.width and num_cells_h == pil_img.height:
+            result = pil_img
+        else:
+            # Downsample
+            result = create_downsampled_image(
+                pil_img,
+                grid_w,
+                grid_h,
+                num_cells_w,
+                num_cells_h,
+                bit=quantize,
+            )
 
         # Remove background after if requested
         if remove_background == "after":

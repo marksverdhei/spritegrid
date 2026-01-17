@@ -1,5 +1,6 @@
 import os
 import subprocess
+import sys
 import pytest
 from pathlib import Path
 from PIL import Image
@@ -160,3 +161,49 @@ def test_spritegrid_cli_with_ascii_output(tmp_path):
         expected_content = f.read()
 
     assert content == expected_content, "ASCII output does not match expected text"
+
+
+def test_spritegrid_idempotence(tmp_path):
+    """Test that processing an already-processed image yields the same result.
+
+    This verifies that f(f(x)) = f(x) - the scaling function is idempotent
+    for images that have already been processed by SpriteGrid.
+    """
+    # Setup paths
+    input_image = Path("tests/data/input/centurion.png")
+    first_output = tmp_path / "first_output.png"
+    second_output = tmp_path / "second_output.png"
+
+    # First pass: process the original image
+    result1 = subprocess.run(
+        [sys.executable, "-m", "spritegrid.cli", str(input_image), "-o", str(first_output)],
+        capture_output=True,
+        text=True
+    )
+    assert result1.returncode == 0, f"First pass failed: {result1.stderr}"
+    assert first_output.exists(), "First output was not created"
+
+    # Second pass: process the already-processed image
+    result2 = subprocess.run(
+        [sys.executable, "-m", "spritegrid.cli", str(first_output), "-o", str(second_output)],
+        capture_output=True,
+        text=True
+    )
+    assert result2.returncode == 0, f"Second pass failed: {result2.stderr}"
+    assert second_output.exists(), "Second output was not created"
+
+    # Load both outputs
+    first_img = Image.open(first_output)
+    second_img = Image.open(second_output)
+
+    # Verify dimensions match
+    assert first_img.size == second_img.size, (
+        f"Idempotence failed: dimensions changed from {first_img.size} to {second_img.size}"
+    )
+
+    # Verify pixel data matches exactly
+    first_data = list(first_img.getdata())
+    second_data = list(second_img.getdata())
+    assert first_data == second_data, (
+        "Idempotence failed: pixel data differs between first and second pass"
+    )
