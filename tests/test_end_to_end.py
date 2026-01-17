@@ -207,38 +207,3 @@ def test_spritegrid_idempotence(tmp_path):
     assert first_data == second_data, (
         "Idempotence failed: pixel data differs between first and second pass"
     )
-
-
-@pytest.mark.xfail(reason="Idempotence fix not yet implemented", strict=True)
-def test_spritegrid_idempotence_fixed(tmp_path):
-    """Secret test: will pass once idempotence is fixed.
-
-    When this test starts passing, remove the xfail marker and delete
-    test_spritegrid_idempotence above.
-    """
-    input_image = Path("tests/data/input/centurion.png")
-    first_output = tmp_path / "first_output.png"
-    second_output = tmp_path / "second_output.png"
-
-    # First pass
-    result1 = subprocess.run(
-        [sys.executable, "-m", "spritegrid.cli", str(input_image), "-o", str(first_output)],
-        capture_output=True,
-        text=True
-    )
-    assert result1.returncode == 0, f"First pass failed: {result1.stderr}"
-
-    # Second pass
-    result2 = subprocess.run(
-        [sys.executable, "-m", "spritegrid.cli", str(first_output), "-o", str(second_output)],
-        capture_output=True,
-        text=True
-    )
-    assert result2.returncode == 0, f"Second pass failed: {result2.stderr}"
-
-    first_img = Image.open(first_output)
-    second_img = Image.open(second_output)
-
-    # These assertions should pass once fixed
-    assert first_img.size == second_img.size
-    assert list(first_img.getdata()) == list(second_img.getdata())
