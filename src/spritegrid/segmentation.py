@@ -12,8 +12,9 @@ def generate_segment_masks(
     h, w = im_arr.shape[:2]
     x, y = np.meshgrid(np.arange(w), np.arange(h))
 
-    # Flatten color and coordinates
-    color_features = im_arr.reshape(-1, 3).astype(np.float32)  # RGB
+    # Flatten color and coordinates (use only RGB, ignore alpha if present)
+    rgb_arr = im_arr[:, :, :3] if im_arr.shape[2] > 3 else im_arr
+    color_features = rgb_arr.reshape(-1, 3).astype(np.float32)
     spatial_features = (
         np.stack([x, y], axis=2).reshape(-1, 2).astype(np.float32)
     )  # x, y
