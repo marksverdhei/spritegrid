@@ -356,9 +356,17 @@ def main(
                 f"(Note: Estimated coverage based on cell count is {est_width}x{est_height}, original image is {image.width}x{image.height}. Check results.)"
             )
 
+        # Check for idempotence: if output dimensions match input, image is already clean
+        is_already_clean = (num_cells_w == image.width and num_cells_h == image.height)
+        if is_already_clean:
+            print("Image appears to be already processed (1:1 pixel grid). Returning unchanged.")
+
         if debug:
             print("\n--- Debug Mode ---")
             output_image = draw_grid_overlay(image, detected_w, detected_h)
+        elif is_already_clean:
+            # Image is already clean pixel art - return as-is for idempotence
+            output_image = image
         else:
             print("\n--- Generating Downsampled Image ---")
             output_image = create_downsampled_image(
