@@ -1,0 +1,17 @@
+{
+  "last_node_id": 3,
+  "last_link_id": 2,
+  "nodes": [
+    {"id": 1, "type": "Nano Banana", "pos": [0, 0], "size": [400, 350], "flags": {}, "order": 0, "mode": 0, "inputs": [], "outputs": [{"name": "IMAGE", "type": "IMAGE", "links": [1], "slot_index": 0}], "title": "Nano Banana (Gemini)", "properties": {}, "widgets_values": ["generate", "pixel art warrior character, 32x32 sprite, retro RPG style, single color pixels, clean pixel grid, transparent background, centered, NES palette", 0.7, 1, "1:1", ""]},
+    {"id": 2, "type": "SpriteGrid", "pos": [450, 0], "size": [315, 178], "flags": {}, "order": 1, "mode": 0, "inputs": [{"name": "image", "type": "IMAGE", "link": 1}], "outputs": [{"name": "IMAGE", "type": "IMAGE", "links": [2], "slot_index": 0}], "title": "SpriteGrid", "properties": {}, "widgets_values": [4, 8, "none", false]},
+    {"id": 3, "type": "SaveImage", "pos": [450, 220], "size": [315, 270], "flags": {}, "order": 2, "mode": 0, "inputs": [{"name": "images", "type": "IMAGE", "link": 2}], "outputs": [], "properties": {}, "widgets_values": ["nano_banana_spritegrid"]}
+  ],
+  "links": [
+    [1, 1, 0, 2, 0, "IMAGE"],
+    [2, 2, 0, 3, 0, "IMAGE"]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}
