@@ -1,6 +1,6 @@
 import io
 import sys
-from typing import Optional
+from typing import Optional, Tuple
 
 import requests
 from PIL import Image, ImageDraw
@@ -289,6 +289,48 @@ def handle_png(image: Image.Image, save_path: str) -> None:
             file=sys.stderr,
         )
 
+def apply_resolution(
+    image: Image.Image,
+    target: Tuple[int, int],
+) -> Image.Image:
+    """Resize *image* to *target* (width, height) using NEAREST resampling.
+
+    NEAREST is used to preserve the hard pixel edges of pixel art.
+    """
+    if image.size == target:
+        return image
+    print(f"Resizing output from {image.width}x{image.height} to {target[0]}x{target[1]}...")
+    return image.resize(target, resample=Image.NEAREST)
+
+
+def apply_aspect_ratio(
+    image: Image.Image,
+    aspect: Tuple[int, int],
+) -> Image.Image:
+    """Center-crop *image* to the given aspect ratio (w_ratio, h_ratio).
+
+    The crop is the largest rectangle with the given aspect that fits inside
+    the image. The image is not padded — content may be lost at the edges.
+    """
+    ratio_w, ratio_h = aspect
+    src_w, src_h = image.size
+
+    # Target dimensions: constrain by whichever axis is the bottleneck
+    target_w = src_w
+    target_h = round(src_w * ratio_h / ratio_w)
+    if target_h > src_h:
+        target_h = src_h
+        target_w = round(src_h * ratio_w / ratio_h)
+
+    if (target_w, target_h) == (src_w, src_h):
+        return image
+
+    left = (src_w - target_w) // 2
+    top = (src_h - target_h) // 2
+    print(f"Cropping output from {src_w}x{src_h} to {target_w}x{target_h} ({ratio_w}:{ratio_h})...")
+    return image.crop((left, top, left + target_w, top + target_h))
+
+
 def main(
     image_source: str,
     min_grid: int = 4,
@@ -299,6 +341,8 @@ def main(
     remove_background: Optional[str] = None,
     crop: bool = False,
     ascii_space_width: Optional[int] = None,
+    res: Optional[Tuple[int, int]] = None,
+    aspect_ratio: Optional[Tuple[int, int]] = None,
 ) -> None:
     """
     Main function to parse arguments, load image, detect grid, and generate output/debug image.
@@ -391,6 +435,12 @@ def main(
                 print("Automatically cropping the image to non-transparent content...")
                 output_image = crop_to_content(output_image)
                 print(f"Image cropped to {output_image.width}x{output_image.height}")
+
+            # Apply custom resolution (--res) — takes precedence over --aspectratio
+            if res is not None:
+                output_image = apply_resolution(output_image, res)
+            elif aspect_ratio is not None:
+                output_image = apply_aspect_ratio(output_image, aspect_ratio)
 
         if debug:
             handle_output(

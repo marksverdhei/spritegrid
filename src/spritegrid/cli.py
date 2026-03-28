@@ -5,6 +5,30 @@ from typing import Optional, Tuple
 from .main import main
 
 
+def parse_aspect_ratio(ratio_str: str) -> Tuple[int, int]:
+    """Parse an aspect ratio string like '4:3' into (width, height) tuple."""
+    if ":" not in ratio_str:
+        raise argparse.ArgumentTypeError(
+            f"Invalid aspect ratio format: {ratio_str!r}. Use 'W:H' (e.g., '4:3' or '16:9')."
+        )
+    parts = ratio_str.split(":")
+    if len(parts) != 2:
+        raise argparse.ArgumentTypeError(
+            f"Invalid aspect ratio format: {ratio_str!r}. Use 'W:H' (e.g., '4:3')."
+        )
+    try:
+        w, h = int(parts[0]), int(parts[1])
+        if w <= 0 or h <= 0:
+            raise argparse.ArgumentTypeError(
+                f"Aspect ratio values must be positive integers: {ratio_str!r}"
+            )
+        return (w, h)
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"Invalid aspect ratio format: {ratio_str!r}. Values must be integers."
+        )
+
+
 def parse_size(size_str: str) -> Tuple[int, int]:
     """Parse a size string like '32' or '32x48' into (width, height) tuple."""
     if "x" in size_str.lower():
@@ -103,6 +127,28 @@ def parse_args() -> argparse.Namespace:
         type=int,
     )
 
+    parser.add_argument(
+        "--res",
+        type=parse_size,
+        metavar="WxH",
+        default=None,
+        help=(
+            "Force the output image to this exact resolution (e.g. '32x32' or '16x24') "
+            "using NEAREST resampling. Overrides --aspectratio."
+        ),
+    )
+
+    parser.add_argument(
+        "--aspectratio",
+        type=parse_aspect_ratio,
+        metavar="W:H",
+        default=None,
+        help=(
+            "Center-crop the output to the given aspect ratio (e.g. '4:3' or '16:9'). "
+            "Ignored when --res is specified."
+        ),
+    )
+
     args = parser.parse_args()
 
     # Ensure the crop argument is passed correctly
@@ -129,6 +175,8 @@ def cli() -> None:
         remove_background=args.remove_background,
         crop=args.crop,
         ascii_space_width=args.ascii,
+        res=args.res,
+        aspect_ratio=args.aspectratio,
     )
 
 
