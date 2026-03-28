@@ -216,6 +216,69 @@ def create_downsampled_image(
     return new_img
 
 
+def create_comparison_image(
+    before: Image.Image,
+    after: Image.Image,
+    label_height: int = 16,
+    divider_width: int = 2,
+) -> Image.Image:
+    """Create a side-by-side before/after comparison image.
+
+    The *after* image is scaled up to match the *before* image's dimensions
+    using NEAREST resampling to preserve hard pixel edges. Both panels are
+    labelled "Before" and "After" in white text on a dark bar.
+
+    Args:
+        before: The original (unprocessed) image.
+        after: The processed (downsampled) image.
+        label_height: Height in pixels of the label bar above each panel.
+        divider_width: Width of the vertical divider between panels.
+
+    Returns:
+        A new PIL Image containing the side-by-side comparison.
+    """
+    target_w, target_h = before.width, before.height
+
+    # Scale the after image up to the same canvas size using NEAREST (pixel-art safe)
+    after_scaled = after.resize((target_w, target_h), resample=Image.NEAREST)
+
+    # Ensure both are in RGBA so we can composite safely
+    before_rgb = before.convert("RGBA")
+    after_rgb = after_scaled.convert("RGBA")
+
+    total_w = target_w * 2 + divider_width
+    total_h = target_h + label_height
+
+    canvas = Image.new("RGBA", (total_w, total_h), (30, 30, 30, 255))
+
+    # Paste panels
+    canvas.paste(before_rgb, (0, label_height))
+    # Divider stays dark (already the background color)
+    canvas.paste(after_rgb, (target_w + divider_width, label_height))
+
+    # Draw labels (only if there is space for them)
+    if label_height > 0:
+        draw = ImageDraw.Draw(canvas)
+        label_bg = (40, 40, 40, 255)
+        text_color = (230, 230, 230, 255)
+
+        draw.rectangle([0, 0, target_w - 1, label_height - 1], fill=label_bg)
+        draw.rectangle([target_w + divider_width, 0, total_w - 1, label_height - 1], fill=label_bg)
+
+        # Centre each label text horizontally within its panel
+        before_bbox = draw.textbbox((0, 0), "Before")
+        after_bbox = draw.textbbox((0, 0), "After")
+
+        before_x = (target_w - (before_bbox[2] - before_bbox[0])) // 2
+        after_x = target_w + divider_width + (target_w - (after_bbox[2] - after_bbox[0])) // 2
+        label_y = (label_height - (before_bbox[3] - before_bbox[1])) // 2
+
+        draw.text((before_x, label_y), "Before", fill=text_color)
+        draw.text((after_x, label_y), "After", fill=text_color)
+
+    return canvas
+
+
 def handle_output(
     image: Image.Image,
     save_path: Optional[str],
@@ -299,6 +362,7 @@ def main(
     remove_background: Optional[str] = None,
     crop: bool = False,
     ascii_space_width: Optional[int] = None,
+    compare: bool = False,
 ) -> None:
     """
     Main function to parse arguments, load image, detect grid, and generate output/debug image.
@@ -392,7 +456,18 @@ def main(
                 output_image = crop_to_content(output_image)
                 print(f"Image cropped to {output_image.width}x{output_image.height}")
 
-        if debug:
+        if compare and not debug and not is_already_clean:
+            print("\n--- Generating Before/After Comparison ---")
+            comparison = create_comparison_image(image, output_image)
+            handle_output(
+                comparison,
+                output_file,
+                show,
+                is_debug=False,
+                default_title=f"{image_source} — Before / After",
+                ascii_space_width=ascii_space_width,
+            )
+        elif debug:
             handle_output(
                 debug_image,
                 output_file,
