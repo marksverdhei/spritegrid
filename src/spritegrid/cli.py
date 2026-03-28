@@ -103,6 +103,12 @@ def parse_args() -> argparse.Namespace:
         type=int,
     )
 
+    parser.add_argument(
+        "--compare",
+        action="store_true",
+        help="Output a side-by-side before/after comparison image instead of just the result.",
+    )
+
     args = parser.parse_args()
 
     # Ensure the crop argument is passed correctly
@@ -129,6 +135,7 @@ def cli() -> None:
         remove_background=args.remove_background,
         crop=args.crop,
         ascii_space_width=args.ascii,
+        compare=args.compare,
     )
 
 
