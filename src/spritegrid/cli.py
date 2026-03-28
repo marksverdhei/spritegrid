@@ -149,6 +149,29 @@ def parse_args() -> argparse.Namespace:
         ),
     )
 
+    parser.add_argument(
+        "--offset",
+        type=parse_size,
+        metavar="XxY",
+        default=None,
+        help=(
+            "Manually translate the grid origin by X,Y pixels (e.g. '2x3'). "
+            "Shifts all sample centres right by X and down by Y. "
+            "Overrides --auto-offset."
+        ),
+    )
+
+    parser.add_argument(
+        "--auto-offset",
+        action="store_true",
+        default=False,
+        help=(
+            "Auto-detect the grid phase offset from the gradient profile and apply it. "
+            "Improves alignment when the grid does not start at pixel 0. "
+            "Ignored when --offset is specified."
+        ),
+    )
+
     args = parser.parse_args()
 
     # Ensure the crop argument is passed correctly
@@ -177,6 +200,8 @@ def cli() -> None:
         ascii_space_width=args.ascii,
         res=args.res,
         aspect_ratio=args.aspectratio,
+        offset=args.offset,
+        auto_offset=args.auto_offset,
     )
 
 

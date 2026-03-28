@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw
 
 from spritegrid.segmentation import make_background_transparent
 
-from .detection import detect_grid
+from .detection import detect_grid, detect_grid_with_offset
 from .utils import (
     convert_image_to_ascii,
     geometric_median,
@@ -89,6 +89,8 @@ def create_downsampled_image(
     bit: int = 8,
     kernel_size: tuple = (3, 3),
     median_type: str = "naive",
+    offset_x: int = 0,
+    offset_y: int = 0,
 ) -> Image.Image:
     """
     Creates a new image by sampling the geometric median pixel of each grid cell
@@ -102,6 +104,8 @@ def create_downsampled_image(
         num_cells_h: The number of grid cells vertically.
         bit: Number of bits per color channel.
         kernel_size: Size of the kernel to sample from (width, height).
+        offset_x: Horizontal grid translation in pixels (shifts sample centres right).
+        offset_y: Vertical grid translation in pixels (shifts sample centres down).
 
     Returns:
         A new PIL Image object with dimensions (num_cells_w, num_cells_h).
@@ -155,9 +159,9 @@ def create_downsampled_image(
 
     for y_new in range(num_cells_h):
         for x_new in range(num_cells_w):
-            # Calculate center coordinates in the original image
-            center_x = min(int(x_new * grid_w + grid_w / 2), original_width - 1)
-            center_y = min(int(y_new * grid_h + grid_h / 2), original_height - 1)
+            # Calculate center coordinates in the original image, applying grid offset
+            center_x = min(max(0, int(x_new * grid_w + grid_w / 2) + offset_x), original_width - 1)
+            center_y = min(max(0, int(y_new * grid_h + grid_h / 2) + offset_y), original_height - 1)
 
             # Calculate kernel boundaries
             half_kernel_w = kernel_w // 2
@@ -343,6 +347,8 @@ def main(
     ascii_space_width: Optional[int] = None,
     res: Optional[Tuple[int, int]] = None,
     aspect_ratio: Optional[Tuple[int, int]] = None,
+    offset: Optional[Tuple[int, int]] = None,
+    auto_offset: bool = False,
 ) -> None:
     """
     Main function to parse arguments, load image, detect grid, and generate output/debug image.
@@ -373,7 +379,20 @@ def main(
     )
 
     # Call the grid detection function from the detection module
-    detected_w, detected_h = detect_grid(image, min_grid_size=min_grid)
+    detected_w, detected_h, auto_offset_x, auto_offset_y = detect_grid_with_offset(
+        image, min_grid_size=min_grid
+    )
+
+    # Apply manual offset if provided; auto-detected offset only if --auto-offset is set
+    if offset is not None:
+        offset_x, offset_y = offset
+        print(f"Using manual grid offset: ({offset_x}, {offset_y})")
+    elif auto_offset:
+        offset_x, offset_y = auto_offset_x, auto_offset_y
+        if detected_w > 0 and (offset_x != 0 or offset_y != 0):
+            print(f"Auto-detected grid offset: ({offset_x}, {offset_y})")
+    else:
+        offset_x, offset_y = 0, 0
 
     # Check the results returned by detect_grid
     if detected_w > 0 and detected_h > 0:
@@ -420,6 +439,8 @@ def main(
                 num_cells_w,
                 num_cells_h,
                 quantize,
+                offset_x=offset_x,
+                offset_y=offset_y,
             )
 
             if remove_background == "after":
