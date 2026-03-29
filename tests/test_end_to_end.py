@@ -43,7 +43,7 @@ def test_spritegrid_cli(tmp_path):
     assert output_img.width == expected_img.width and output_img.height == expected_img.height, "Image dimensions do not match expected"
 
     # Compare pixel data
-    assert list(output_img.getdata()) == list(expected_img.getdata()), "Image content does not match expected"
+    assert list(output_img.get_flattened_data()) == list(expected_img.get_flattened_data()), "Image content does not match expected"
 
 def test_spritegrid_cli_with_background_removal(tmp_path):
     """Test CLI with background removal before processing."""
@@ -83,7 +83,7 @@ def test_spritegrid_cli_with_background_removal(tmp_path):
     assert output_img.width == expected_img.width and output_img.height == expected_img.height, "Image dimensions do not match expected"
 
     # Compare pixel data
-    assert list(output_img.getdata()) == list(expected_img.getdata()), "Image content does not match expected"
+    assert list(output_img.get_flattened_data()) == list(expected_img.get_flattened_data()), "Image content does not match expected"
 
 def test_spritegrid_cli_with_cropping(tmp_path):
     """Test CLI with automatic cropping."""
@@ -126,7 +126,7 @@ def test_spritegrid_cli_with_cropping(tmp_path):
     assert output_img.width == expected_img.width and output_img.height == expected_img.height, "Image dimensions do not match expected"
 
     # Compare pixel data
-    assert list(output_img.getdata()) == list(expected_img.getdata()), "Image content does not match expected"
+    assert list(output_img.get_flattened_data()) == list(expected_img.get_flattened_data()), "Image content does not match expected"
 
 def test_spritegrid_cli_with_ascii_output(tmp_path):
     """Test CLI with ASCII text output."""
@@ -202,8 +202,8 @@ def test_spritegrid_idempotence(tmp_path):
     )
 
     # Verify pixel data matches exactly
-    first_data = list(first_img.getdata())
-    second_data = list(second_img.getdata())
+    first_data = list(first_img.get_flattened_data())
+    second_data = list(second_img.get_flattened_data())
     assert first_data == second_data, (
         "Idempotence failed: pixel data differs between first and second pass"
     )
