@@ -137,7 +137,7 @@ class TestCreateDownsampledImageOffset:
         img = self._solid_image(16, 16)
         r1 = create_downsampled_image(img, 4, 4, 4, 4)
         r2 = create_downsampled_image(img, 4, 4, 4, 4, offset_x=0, offset_y=0)
-        assert list(r1.getdata()) == list(r2.getdata())
+        assert list(r1.get_flattened_data()) == list(r2.get_flattened_data())
 
     def test_offset_does_not_raise(self):
         img = self._solid_image(32, 32)
@@ -172,7 +172,7 @@ class TestCreateDownsampledImageOffset:
         # With offset=4: first cell centre is at x=8, second at x=16 (clamped to 15)
         # Without offset: first cell centre is at x=4 (red), second at x=12 (blue)
         # They should differ
-        assert list(r_no_offset.getdata()) != list(r_with_offset.getdata())
+        assert list(r_no_offset.get_flattened_data()) != list(r_with_offset.get_flattened_data())
 
 
 # ---------------------------------------------------------------------------
