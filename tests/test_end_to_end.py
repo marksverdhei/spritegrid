@@ -12,17 +12,17 @@ def test_spritegrid_cli(tmp_path):
     
     # Run CLI command with proper arguments
     result = subprocess.run(
-        ["python", "-m", "spritegrid.cli", str(input_image), "-o", str(output_file)],
+        [sys.executable, "-m", "spritegrid.cli", str(input_image), "-o", str(output_file)],
         capture_output=True,
         text=True
     )
-    
+
     # Verify CLI execution
     assert result.returncode == 0, f"CLI failed with error: {result.stderr}"
-    
+
     # Verify output file was created
     assert output_file.exists(), f"Output file {output_file} was not created"
-    
+
     # Verify output is a valid image
     try:
         img = Image.open(output_file)
@@ -43,7 +43,7 @@ def test_spritegrid_cli(tmp_path):
     assert output_img.width == expected_img.width and output_img.height == expected_img.height, "Image dimensions do not match expected"
 
     # Compare pixel data
-    assert list(output_img.getdata()) == list(expected_img.getdata()), "Image content does not match expected"
+    assert list(output_img.get_flattened_data()) == list(expected_img.get_flattened_data()), "Image content does not match expected"
 
 def test_spritegrid_cli_with_background_removal(tmp_path):
     """Test CLI with background removal before processing."""
@@ -53,7 +53,7 @@ def test_spritegrid_cli_with_background_removal(tmp_path):
     
     # Run CLI command with background removal
     result = subprocess.run(
-        ["python", "-m", "spritegrid.cli", str(input_image), "-o", str(output_file), "-b"],
+        [sys.executable, "-m", "spritegrid.cli", str(input_image), "-o", str(output_file), "-b"],
         capture_output=True,
         text=True
     )
@@ -83,7 +83,7 @@ def test_spritegrid_cli_with_background_removal(tmp_path):
     assert output_img.width == expected_img.width and output_img.height == expected_img.height, "Image dimensions do not match expected"
 
     # Compare pixel data
-    assert list(output_img.getdata()) == list(expected_img.getdata()), "Image content does not match expected"
+    assert list(output_img.get_flattened_data()) == list(expected_img.get_flattened_data()), "Image content does not match expected"
 
 def test_spritegrid_cli_with_cropping(tmp_path):
     """Test CLI with automatic cropping."""
@@ -93,7 +93,7 @@ def test_spritegrid_cli_with_cropping(tmp_path):
     
     # Run CLI command with cropping
     result = subprocess.run(
-        ["python", "-m", "spritegrid.cli", str(input_image), "-o", str(output_file), "-c"],
+        [sys.executable, "-m", "spritegrid.cli", str(input_image), "-o", str(output_file), "-c"],
         capture_output=True,
         text=True
     )
@@ -126,7 +126,7 @@ def test_spritegrid_cli_with_cropping(tmp_path):
     assert output_img.width == expected_img.width and output_img.height == expected_img.height, "Image dimensions do not match expected"
 
     # Compare pixel data
-    assert list(output_img.getdata()) == list(expected_img.getdata()), "Image content does not match expected"
+    assert list(output_img.get_flattened_data()) == list(expected_img.get_flattened_data()), "Image content does not match expected"
 
 def test_spritegrid_cli_with_ascii_output(tmp_path):
     """Test CLI with ASCII text output."""
@@ -136,7 +136,7 @@ def test_spritegrid_cli_with_ascii_output(tmp_path):
     
     # Run CLI command with ASCII output
     result = subprocess.run(
-        ["python", "-m", "spritegrid.cli", str(input_image), "-o", str(output_file), "-a", "1"],
+        [sys.executable, "-m", "spritegrid.cli", str(input_image), "-o", str(output_file), "-a", "1"],
         capture_output=True,
         text=True
     )
@@ -202,8 +202,8 @@ def test_spritegrid_idempotence(tmp_path):
     )
 
     # Verify pixel data matches exactly
-    first_data = list(first_img.getdata())
-    second_data = list(second_img.getdata())
+    first_data = list(first_img.get_flattened_data())
+    second_data = list(second_img.get_flattened_data())
     assert first_data == second_data, (
         "Idempotence failed: pixel data differs between first and second pass"
     )
