@@ -12,17 +12,17 @@ def test_spritegrid_cli(tmp_path):
     
     # Run CLI command with proper arguments
     result = subprocess.run(
-        ["python", "-m", "spritegrid.cli", str(input_image), "-o", str(output_file)],
+        [sys.executable, "-m", "spritegrid.cli", str(input_image), "-o", str(output_file)],
         capture_output=True,
         text=True
     )
-    
+
     # Verify CLI execution
     assert result.returncode == 0, f"CLI failed with error: {result.stderr}"
-    
+
     # Verify output file was created
     assert output_file.exists(), f"Output file {output_file} was not created"
-    
+
     # Verify output is a valid image
     try:
         img = Image.open(output_file)
@@ -53,7 +53,7 @@ def test_spritegrid_cli_with_background_removal(tmp_path):
     
     # Run CLI command with background removal
     result = subprocess.run(
-        ["python", "-m", "spritegrid.cli", str(input_image), "-o", str(output_file), "-b"],
+        [sys.executable, "-m", "spritegrid.cli", str(input_image), "-o", str(output_file), "-b"],
         capture_output=True,
         text=True
     )
@@ -93,7 +93,7 @@ def test_spritegrid_cli_with_cropping(tmp_path):
     
     # Run CLI command with cropping
     result = subprocess.run(
-        ["python", "-m", "spritegrid.cli", str(input_image), "-o", str(output_file), "-c"],
+        [sys.executable, "-m", "spritegrid.cli", str(input_image), "-o", str(output_file), "-c"],
         capture_output=True,
         text=True
     )
@@ -136,7 +136,7 @@ def test_spritegrid_cli_with_ascii_output(tmp_path):
     
     # Run CLI command with ASCII output
     result = subprocess.run(
-        ["python", "-m", "spritegrid.cli", str(input_image), "-o", str(output_file), "-a", "1"],
+        [sys.executable, "-m", "spritegrid.cli", str(input_image), "-o", str(output_file), "-a", "1"],
         capture_output=True,
         text=True
     )
