@@ -1,13 +1,13 @@
 import io
 import sys
-from typing import Optional
+from typing import Optional, Tuple
 
 import requests
 from PIL import Image, ImageDraw
 
 from spritegrid.segmentation import make_background_transparent
 
-from .detection import detect_grid
+from .detection import detect_grid, detect_grid_with_offset
 from .utils import (
     convert_image_to_ascii,
     geometric_median,
@@ -89,6 +89,8 @@ def create_downsampled_image(
     bit: int = 8,
     kernel_size: tuple = (3, 3),
     median_type: str = "naive",
+    offset_x: int = 0,
+    offset_y: int = 0,
 ) -> Image.Image:
     """
     Creates a new image by sampling the geometric median pixel of each grid cell
@@ -102,6 +104,8 @@ def create_downsampled_image(
         num_cells_h: The number of grid cells vertically.
         bit: Number of bits per color channel.
         kernel_size: Size of the kernel to sample from (width, height).
+        offset_x: Horizontal grid translation in pixels (shifts sample centres right).
+        offset_y: Vertical grid translation in pixels (shifts sample centres down).
 
     Returns:
         A new PIL Image object with dimensions (num_cells_w, num_cells_h).
@@ -155,9 +159,9 @@ def create_downsampled_image(
 
     for y_new in range(num_cells_h):
         for x_new in range(num_cells_w):
-            # Calculate center coordinates in the original image
-            center_x = min(int(x_new * grid_w + grid_w / 2), original_width - 1)
-            center_y = min(int(y_new * grid_h + grid_h / 2), original_height - 1)
+            # Calculate center coordinates in the original image, applying grid offset
+            center_x = min(max(0, int(x_new * grid_w + grid_w / 2) + offset_x), original_width - 1)
+            center_y = min(max(0, int(y_new * grid_h + grid_h / 2) + offset_y), original_height - 1)
 
             # Calculate kernel boundaries
             half_kernel_w = kernel_w // 2
@@ -289,6 +293,48 @@ def handle_png(image: Image.Image, save_path: str) -> None:
             file=sys.stderr,
         )
 
+def apply_resolution(
+    image: Image.Image,
+    target: Tuple[int, int],
+) -> Image.Image:
+    """Resize *image* to *target* (width, height) using NEAREST resampling.
+
+    NEAREST is used to preserve the hard pixel edges of pixel art.
+    """
+    if image.size == target:
+        return image
+    print(f"Resizing output from {image.width}x{image.height} to {target[0]}x{target[1]}...")
+    return image.resize(target, resample=Image.NEAREST)
+
+
+def apply_aspect_ratio(
+    image: Image.Image,
+    aspect: Tuple[int, int],
+) -> Image.Image:
+    """Center-crop *image* to the given aspect ratio (w_ratio, h_ratio).
+
+    The crop is the largest rectangle with the given aspect that fits inside
+    the image. The image is not padded — content may be lost at the edges.
+    """
+    ratio_w, ratio_h = aspect
+    src_w, src_h = image.size
+
+    # Target dimensions: constrain by whichever axis is the bottleneck
+    target_w = src_w
+    target_h = round(src_w * ratio_h / ratio_w)
+    if target_h > src_h:
+        target_h = src_h
+        target_w = round(src_h * ratio_w / ratio_h)
+
+    if (target_w, target_h) == (src_w, src_h):
+        return image
+
+    left = (src_w - target_w) // 2
+    top = (src_h - target_h) // 2
+    print(f"Cropping output from {src_w}x{src_h} to {target_w}x{target_h} ({ratio_w}:{ratio_h})...")
+    return image.crop((left, top, left + target_w, top + target_h))
+
+
 def main(
     image_source: str,
     min_grid: int = 4,
@@ -299,6 +345,10 @@ def main(
     remove_background: Optional[str] = None,
     crop: bool = False,
     ascii_space_width: Optional[int] = None,
+    res: Optional[Tuple[int, int]] = None,
+    aspect_ratio: Optional[Tuple[int, int]] = None,
+    offset: Optional[Tuple[int, int]] = None,
+    auto_offset: bool = False,
 ) -> None:
     """
     Main function to parse arguments, load image, detect grid, and generate output/debug image.
@@ -329,7 +379,20 @@ def main(
     )
 
     # Call the grid detection function from the detection module
-    detected_w, detected_h = detect_grid(image, min_grid_size=min_grid)
+    detected_w, detected_h, auto_offset_x, auto_offset_y = detect_grid_with_offset(
+        image, min_grid_size=min_grid
+    )
+
+    # Apply manual offset if provided; auto-detected offset only if --auto-offset is set
+    if offset is not None:
+        offset_x, offset_y = offset
+        print(f"Using manual grid offset: ({offset_x}, {offset_y})")
+    elif auto_offset:
+        offset_x, offset_y = auto_offset_x, auto_offset_y
+        if detected_w > 0 and (offset_x != 0 or offset_y != 0):
+            print(f"Auto-detected grid offset: ({offset_x}, {offset_y})")
+    else:
+        offset_x, offset_y = 0, 0
 
     # Check the results returned by detect_grid
     if detected_w > 0 and detected_h > 0:
@@ -376,6 +439,8 @@ def main(
                 num_cells_w,
                 num_cells_h,
                 quantize,
+                offset_x=offset_x,
+                offset_y=offset_y,
             )
 
             if remove_background == "after":
@@ -391,6 +456,12 @@ def main(
                 print("Automatically cropping the image to non-transparent content...")
                 output_image = crop_to_content(output_image)
                 print(f"Image cropped to {output_image.width}x{output_image.height}")
+
+            # Apply custom resolution (--res) — takes precedence over --aspectratio
+            if res is not None:
+                output_image = apply_resolution(output_image, res)
+            elif aspect_ratio is not None:
+                output_image = apply_aspect_ratio(output_image, aspect_ratio)
 
         if debug:
             handle_output(
