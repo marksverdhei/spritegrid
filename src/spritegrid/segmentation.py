@@ -77,10 +77,16 @@ def make_background_transparent(
             show_mask(mask, ax=ax, random_color=True)
         plt.axis("off")
 
-        # Convert the matplotlib figure to a PIL image
+        # Convert the matplotlib figure to a PIL image.
+        # fig.canvas.tostring_argb() returns ARGB bytes (4 bytes/pixel) — feeding
+        # those to Image.frombytes("RGB", ...) silently misinterpreted them as
+        # RGB (3 bytes/pixel), producing a color-shifted, bottom-truncated debug
+        # image (every visible pixel offset by one channel; the last quarter
+        # filled with garbage / black). Use buffer_rgba() so the byte format
+        # matches what PIL is told to parse.
         fig.canvas.draw()
         debug_image = Image.frombytes(
-            "RGB", fig.canvas.get_width_height(), fig.canvas.tostring_argb()
+            "RGBA", fig.canvas.get_width_height(), bytes(fig.canvas.buffer_rgba())
         )
         plt.close(fig)  # Close the figure to free memory
 
