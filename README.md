@@ -90,6 +90,13 @@ spritegrid ai_pixelart.png -b -c -o sprite.png
 
 # Debug mode: visualize detected grid overlay
 spritegrid ai_pixelart.png -d -o debug.png
+
+# Force an exact output size, or crop to an aspect ratio
+spritegrid ai_pixelart.png -o sprite.png --res 32x32
+spritegrid ai_pixelart.png -o sprite.png --aspectratio 4:3
+
+# Save a before/after comparison image
+spritegrid ai_pixelart.png -o compare.png --compare
 ```
 
 **Options:**
@@ -104,6 +111,9 @@ spritegrid ai_pixelart.png -d -o debug.png
 | `-a, --ascii SCALE` | Output as ANSI art |
 | `-m, --min-grid N` | Minimum grid size (default: 4) |
 | `-q, --quantize N` | Color bits: 4-8 (default: 8) |
+| `--res WxH` | Force exact output resolution, e.g. `32x32` (NEAREST; overrides `--aspectratio`) |
+| `--aspectratio W:H` | Center-crop output to an aspect ratio, e.g. `4:3` |
+| `--compare` | Output a side-by-side before/after comparison image |
 
 ### Sprite Extraction
 
