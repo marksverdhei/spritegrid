@@ -18,9 +18,7 @@ def tensor_to_pil(tensor: torch.Tensor) -> Image.Image:
     """Convert ComfyUI IMAGE tensor to PIL Image."""
     img = tensor.squeeze(0).cpu().numpy()
     img = (img * 255).clip(0, 255).astype(np.uint8)
-    if img.shape[-1] == 4:
-        return Image.fromarray(img, mode="RGBA")
-    return Image.fromarray(img, mode="RGB")
+    return Image.fromarray(img)
 
 
 def pil_to_tensor(pil_img: Image.Image) -> torch.Tensor:
