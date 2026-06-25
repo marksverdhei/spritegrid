@@ -139,3 +139,28 @@ class TestMakeBackgroundTransparent:
         img = Image.fromarray(np.full((6, 6, 3), [128, 128, 128], dtype=np.uint8))
         out_img, debug = make_background_transparent(img)
         assert isinstance(out_img, Image.Image)
+
+    def test_debug_image_byte_length_matches_canvas(self):
+        """Regression: the debug image was built by feeding 4-byte/pixel ARGB
+        bytes (fig.canvas.tostring_argb()) into Image.frombytes('RGB', ...),
+        which interprets 3 bytes/pixel — silently producing a color-shifted,
+        bottom-truncated picture. After the fix the byte count must be
+        consistent with the declared mode (4 bytes/pixel RGBA)."""
+        from unittest.mock import patch
+        from spritegrid import segmentation
+
+        # Mock the cluster labels so the debug path runs deterministically
+        # without depending on DBSCAN being able to find clusters in noise.
+        arr = np.zeros((8, 8, 3), dtype=np.uint8)
+        labels = np.zeros((8, 8), dtype=np.int64)
+        labels[:4, :] = 0
+        labels[4:, :] = 1
+        with patch.object(segmentation, "generate_segment_masks", return_value=labels):
+            img = Image.fromarray(arr)
+            _, debug_img = segmentation.make_background_transparent(img, debug=True)
+        assert debug_img is not None
+        # The fix uses 'RGBA' (4 bytes/pixel), matching canvas.buffer_rgba()
+        assert debug_img.mode == "RGBA"
+        w, h = debug_img.size
+        # The raw bytes from the underlying buffer must be exactly w*h*4
+        assert len(debug_img.tobytes()) == w * h * 4
