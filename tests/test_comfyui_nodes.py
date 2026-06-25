@@ -7,8 +7,9 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-import torch
 from PIL import Image
+
+torch = pytest.importorskip("torch")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
