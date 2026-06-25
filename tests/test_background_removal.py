@@ -30,7 +30,7 @@ def test_crop_to_content():
     ]  # Red with alpha=255
 
     # Convert numpy array to PIL Image
-    test_image = Image.fromarray(draw_area, "RGBA")
+    test_image = Image.fromarray(draw_area)
 
     # Apply cropping
     cropped = crop_to_content(test_image)

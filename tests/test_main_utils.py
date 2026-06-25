@@ -126,7 +126,7 @@ class TestCreateDownsampledImage:
         w = grid_w * cells_w
         h = grid_h * cells_h
         arr = np.zeros((h, w, 3), dtype=np.uint8)
-        return Image.fromarray(arr, "RGB")
+        return Image.fromarray(arr)
 
     def test_output_size_matches_num_cells(self):
         from spritegrid.main import create_downsampled_image

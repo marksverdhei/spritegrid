@@ -22,7 +22,7 @@ def create_test_image_with_content(
     img_array = np.zeros((height, width, 4), dtype=np.uint8)
     left, top, right, bottom = content_rect
     img_array[top:bottom, left:right] = color
-    return Image.fromarray(img_array, "RGBA")
+    return Image.fromarray(img_array)
 
 
 def test_detect_bounds():
