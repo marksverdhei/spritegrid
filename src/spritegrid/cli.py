@@ -149,6 +149,12 @@ def parse_args() -> argparse.Namespace:
         ),
     )
 
+    parser.add_argument(
+        "--compare",
+        action="store_true",
+        help="Output a side-by-side before/after comparison image instead of just the result.",
+    )
+
     args = parser.parse_args()
 
     # Ensure the crop argument is passed correctly
@@ -177,6 +183,7 @@ def cli() -> None:
         ascii_space_width=args.ascii,
         res=args.res,
         aspect_ratio=args.aspectratio,
+        compare=args.compare,
     )
 
 
