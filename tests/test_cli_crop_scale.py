@@ -12,7 +12,7 @@ def create_test_image(path, size=(200, 200), content_rect=(50, 50, 150, 150)):
     img_array = np.zeros((size[1], size[0], 4), dtype=np.uint8)
     left, top, right, bottom = content_rect
     img_array[top:bottom, left:right] = [255, 100, 100, 255]
-    img = Image.fromarray(img_array, "RGBA")
+    img = Image.fromarray(img_array)
     img.save(path)
     return path
 
