@@ -97,6 +97,10 @@ spritegrid ai_pixelart.png -o sprite.png --aspectratio 4:3
 
 # Save a before/after comparison image
 spritegrid ai_pixelart.png -o compare.png --compare
+
+# Translate the sample-centre grid by a fixed pixel offset, or auto-detect it
+spritegrid ai_pixelart.png -o sprite.png --offset 2,3
+spritegrid ai_pixelart.png -o sprite.png --auto-offset
 ```
 
 **Options:**
@@ -114,6 +118,8 @@ spritegrid ai_pixelart.png -o compare.png --compare
 | `--res WxH` | Force exact output resolution, e.g. `32x32` (NEAREST; overrides `--aspectratio`) |
 | `--aspectratio W:H` | Center-crop output to an aspect ratio, e.g. `4:3` |
 | `--compare` | Output a side-by-side before/after comparison image |
+| `--offset X,Y` | Manually translate the sample-centre grid by `X,Y` pixels |
+| `--auto-offset` | Auto-detect the grid phase offset from the gradient profile |
 
 ### Sprite Extraction
 
