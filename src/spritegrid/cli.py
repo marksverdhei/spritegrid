@@ -1,6 +1,6 @@
 import argparse
 import sys
-from typing import Optional, Tuple
+from typing import Tuple
 
 from .main import main
 
@@ -155,6 +155,29 @@ def parse_args() -> argparse.Namespace:
         help="Output a side-by-side before/after comparison image instead of just the result.",
     )
 
+    parser.add_argument(
+        "--offset",
+        type=parse_size,
+        metavar="XxY",
+        default=None,
+        help=(
+            "Manually translate the grid origin by X,Y pixels (e.g. '2x3'). "
+            "Shifts all sample centres right by X and down by Y. "
+            "Overrides --auto-offset."
+        ),
+    )
+
+    parser.add_argument(
+        "--auto-offset",
+        action="store_true",
+        default=False,
+        help=(
+            "Auto-detect the grid phase offset from the gradient profile and apply it. "
+            "Improves alignment when the grid does not start at pixel 0. "
+            "Ignored when --offset is specified."
+        ),
+    )
+
     args = parser.parse_args()
 
     # Ensure the crop argument is passed correctly
@@ -184,6 +207,8 @@ def cli() -> None:
         res=args.res,
         aspect_ratio=args.aspectratio,
         compare=args.compare,
+        offset=args.offset,
+        auto_offset=args.auto_offset,
     )
 
 
@@ -284,7 +309,6 @@ def crop_scale_cli() -> None:
     """
     Entry point for the crop-and-scale command line interface.
     """
-    from PIL import Image
     from .main import load_image, handle_output
     from .crop_and_scale import crop_and_scale, crop_and_scale_centered
 

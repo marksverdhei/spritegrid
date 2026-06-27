@@ -76,6 +76,35 @@ def find_dominant_spacing(
     return int(most_common_spacing), confidence
 
 
+def find_grid_offset(profile: np.ndarray, spacing: int) -> int:
+    """Find the phase offset of a repeating grid pattern in a 1D gradient profile.
+
+    Scans offset values 0..(spacing-1) and returns the one that maximises the
+    sum of profile values at positions offset, offset+spacing, offset+2*spacing, ...
+
+    Args:
+        profile: 1D gradient profile.
+        spacing: Known grid cell size in pixels.
+
+    Returns:
+        Best offset (0-indexed pixel position where the first grid line falls).
+    """
+    if spacing <= 0 or len(profile) < spacing:
+        return 0
+
+    best_offset = 0
+    best_score = -1.0
+
+    for offset in range(spacing):
+        indices = np.arange(offset, len(profile), spacing)
+        score = float(profile[indices].sum())
+        if score > best_score:
+            best_score = score
+            best_offset = offset
+
+    return best_offset
+
+
 def detect_grid(
     image: Image.Image,
     min_grid_size: int = 4,
@@ -96,6 +125,34 @@ def detect_grid(
 
     Returns:
         Tuple (grid_w, grid_h) or (0, 0) if detection fails or confidence is low.
+    """
+    result = detect_grid_with_offset(image, min_grid_size, smoothing_sigma, min_confidence)
+    return result[0], result[1]
+
+
+def detect_grid_with_offset(
+    image: Image.Image,
+    min_grid_size: int = 4,
+    smoothing_sigma: float = 1.0,
+    min_confidence: float = 0.4,
+) -> Tuple[int, int, int, int]:
+    """
+    Analyzes the input image to detect grid dimensions *and* the phase offset.
+
+    Returns (grid_w, grid_h, offset_x, offset_y).  The offset tells you the
+    x/y pixel position where the first grid column/row boundary falls.
+    Use the half-cell shift (offset_x + grid_w//2) as the first sample centre.
+
+    Returns (0, 0, 0, 0) if no reliable grid is detected.
+
+    Args:
+        image: The PIL Image object to analyze.
+        min_grid_size: Minimum expected grid dimension for peak finding.
+        smoothing_sigma: Gaussian smoothing sigma (0 to disable).
+        min_confidence: Minimum confidence threshold (0-1) to accept detection.
+
+    Returns:
+        Tuple (grid_w, grid_h, offset_x, offset_y) or (0, 0, 0, 0).
     """
     try:
         # Convert to grayscale
@@ -130,7 +187,7 @@ def detect_grid(
 
         # Check if detection failed
         if grid_w <= 0 or grid_h <= 0:
-            return (0, 0)
+            return (0, 0, 0, 0)
 
         # Check confidence threshold
         avg_confidence = (conf_h + conf_w) / 2
@@ -140,7 +197,7 @@ def detect_grid(
                 "Image may already be clean pixel art.",
                 file=sys.stderr,
             )
-            return (0, 0)
+            return (0, 0, 0, 0)
 
         # Check grid aspect ratio - genuine pixel art grids are roughly square
         grid_ratio = grid_w / grid_h
@@ -150,17 +207,21 @@ def detect_grid(
                 "Image may already be clean pixel art.",
                 file=sys.stderr,
             )
-            return (0, 0)
+            return (0, 0, 0, 0)
 
-        return grid_w, grid_h
+        # Detect grid phase offset using the already-computed gradient profiles
+        offset_x = find_grid_offset(profile_h, grid_w)
+        offset_y = find_grid_offset(profile_v, grid_h)
+
+        return grid_w, grid_h, offset_x, offset_y
 
     except ImportError:
         print(
             "Error: SciPy or NumPy not found. Install with: pip install numpy scipy pillow",
             file=sys.stderr,
         )
-        return (0, 0)
+        return (0, 0, 0, 0)
     except Exception as e:
         print(f"Grid detection error: {e}", file=sys.stderr)
         traceback.print_exc()
-        return (0, 0)
+        return (0, 0, 0, 0)
