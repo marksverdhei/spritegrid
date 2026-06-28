@@ -6,7 +6,11 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from spritegrid.detection import find_dominant_spacing, detect_grid
+from spritegrid.detection import (
+    find_dominant_spacing,
+    detect_grid,
+    detect_grid_with_offset,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -129,3 +133,29 @@ class TestDetectGrid:
             gw, gh = detect_grid(img)
             assert gw >= 0
             assert gh >= 0
+
+
+# ---------------------------------------------------------------------------
+# detect_grid_with_offset — must always honour its 4-tuple contract
+# ---------------------------------------------------------------------------
+
+class TestDetectGridWithOffset:
+    def test_always_returns_four_tuple(self):
+        img = _uniform_image(64, 64)
+        result = detect_grid_with_offset(img)
+        assert isinstance(result, tuple)
+        assert len(result) == 4
+
+    def test_too_small_image_returns_four_zeros(self):
+        """Regression: a too-small image must return (0, 0, 0, 0), not (0, 0).
+
+        main.py unpacks four values, so a 2-tuple here raised
+        'ValueError: not enough values to unpack'.
+        """
+        img = Image.new("L", (4, 4), 128)
+        w, h, ox, oy = detect_grid_with_offset(img, min_grid_size=8)
+        assert (w, h, ox, oy) == (0, 0, 0, 0)
+
+    def test_uniform_image_returns_four_zeros(self):
+        img = _uniform_image(64, 64)
+        assert detect_grid_with_offset(img) == (0, 0, 0, 0)
