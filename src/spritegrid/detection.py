@@ -166,7 +166,7 @@ def detect_grid_with_offset(
 
         # Image too small for analysis
         if img_h < actual_min_spacing * 2 or img_w < actual_min_spacing * 2:
-            return (0, 0)
+            return (0, 0, 0, 0)
 
         # Calculate gradients
         gradient_h = np.abs(np.diff(img_array, axis=1, append=img_array[:, -1:]))
