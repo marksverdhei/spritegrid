@@ -33,12 +33,12 @@ def _make_grid_image(cell_size: int, cells_w: int, cells_h: int,
     for y in range(offset_y, h, cell_size):
         arr[y, :, :] = 0
 
-    return Image.fromarray(arr, "RGB")
+    return Image.fromarray(arr)
 
 
 def _uniform_image(w: int, h: int, color=(128, 128, 128)) -> Image.Image:
     arr = np.full((h, w, 3), color, dtype=np.uint8)
-    return Image.fromarray(arr, "RGB")
+    return Image.fromarray(arr)
 
 
 # ---------------------------------------------------------------------------
@@ -130,7 +130,7 @@ class TestDetectGridWithOffset:
 class TestCreateDownsampledImageOffset:
     def _solid_image(self, w: int, h: int, color=(200, 100, 50)) -> Image.Image:
         arr = np.full((h, w, 3), color, dtype=np.uint8)
-        return Image.fromarray(arr, "RGB")
+        return Image.fromarray(arr)
 
     def test_zero_offset_matches_default(self):
         img = self._solid_image(16, 16)
@@ -162,7 +162,7 @@ class TestCreateDownsampledImageOffset:
         arr = np.zeros((8, 16, 3), dtype=np.uint8)
         arr[:, :8, 0] = 255   # red left
         arr[:, 8:, 2] = 255   # blue right
-        img = Image.fromarray(arr, "RGB")
+        img = Image.fromarray(arr)
 
         # Cell size 8, 2 cells wide → boundary falls right on x=8
         r_no_offset = create_downsampled_image(img, 8, 8, 2, 1, offset_x=0, offset_y=0)
