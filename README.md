@@ -48,7 +48,14 @@ cp -r /path/to/spritegrid/src/spritegrid/comfyui \
   /path/to/ComfyUI/custom_nodes/spritegrid
 ```
 
-Restart ComfyUI after installing. The **SpriteGrid** node appears under `image/sprite`.
+Restart ComfyUI after installing. The **SpriteGrid** and **SpriteGrid (Animation)**
+nodes appear under `image/sprite`.
+
+For animation workflows (AnimateDiff, video frames, etc.), use **SpriteGrid
+(Animation)**: it takes an image *batch*, detects one shared grid across all
+frames, and downsamples each frame against it — so the cleaned animation stays
+temporally stable instead of flickering. (The plain **SpriteGrid** node detects
+per image and is intended for single frames.)
 
 ### Node Parameters
 
@@ -124,6 +131,41 @@ spritegrid ai_pixelart.png -o sprite.png --symmetric
 | `--compare` | Output a side-by-side before/after comparison image |
 | `--offset XxY` | Manually translate the sample-centre grid by `X,Y` pixels (e.g. `2x3`) |
 | `--auto-offset` | Auto-detect the grid phase offset from the gradient profile |
+| `--fps N` | Animation only: output frames-per-second (mutually exclusive with `--duration`) |
+| `--duration MS` | Animation only: milliseconds per frame (mutually exclusive with `--fps`) |
+
+### Animations
+
+SpriteGrid also cleans **animations** — animated GIF/APNG, a folder of numbered
+frames, or video (`.mp4` / `.webm`). The same `spritegrid` command auto-detects a
+multi-frame input and routes it through the animation pipeline; no separate
+command is needed.
+
+```bash
+# Clean an animated GIF (auto-detected) — output is also a GIF
+spritegrid character_walk.gif -o clean_walk.gif
+
+# A folder of frames in, a folder of frames out
+spritegrid frames_in/ -o frames_out/
+
+# Video in, video out, upscaled 8x and re-timed to 12 fps
+spritegrid anim.mp4 -o anim_clean.mp4 --res 256x256 --fps 12
+```
+
+The key difference from running each frame separately: SpriteGrid detects **one
+shared pixel grid across all frames** (by aggregating the per-frame gradient
+profiles) and downsamples every frame against that identical grid. Because grid
+lines sit at fixed positions while content moves, aggregating *reinforces* the
+grid and *averages out* the motion — so detection is robust and the output is
+temporally stable: every frame has the same resolution, the same grid
+alignment, and a shared palette (no flicker). All the still-image flags
+(`--min-grid`, `-q`, `--offset`/`--auto-offset`, `--res`, `--aspectratio`, `-c`,
+`-s`) apply per frame; `--crop` uses a single shared bounding box so the sprite
+size stays constant.
+
+> Video support uses OpenCV (already a dependency). `.mp4` (codec `mp4v`) is the
+> most portable output; tiny pixel-art frames encode best with an explicit
+> upscale, e.g. `--res 256x256`.
 
 ### Sprite Extraction
 

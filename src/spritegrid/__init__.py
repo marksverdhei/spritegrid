@@ -28,6 +28,20 @@ from spritegrid.crop_and_scale import (
     crop_and_scale_centered,
     batch_process,
 )
+from spritegrid.detection import (
+    detect_grid,
+    detect_grid_with_offset,
+    detect_grid_across_frames,
+    compute_gradient_profiles,
+    detect_grid_from_profiles,
+)
+from spritegrid.animation import (
+    load_frames,
+    save_frames,
+    process_frames,
+    process_animation,
+    is_animated_source,
+)
 
 __all__ = [
     "process_sprite",
@@ -36,4 +50,16 @@ __all__ = [
     "crop_and_scale",
     "crop_and_scale_centered",
     "batch_process",
+    # Grid detection
+    "detect_grid",
+    "detect_grid_with_offset",
+    "detect_grid_across_frames",
+    "compute_gradient_profiles",
+    "detect_grid_from_profiles",
+    # Animation
+    "load_frames",
+    "save_frames",
+    "process_frames",
+    "process_animation",
+    "is_animated_source",
 ]
