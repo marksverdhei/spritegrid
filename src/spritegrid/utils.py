@@ -176,4 +176,4 @@ def enforce_symmetry(image: Image.Image) -> Image.Image:
                 else:
                     result[y, x] = p2
 
-    return Image.fromarray(result, image.mode)
+    return Image.fromarray(result)

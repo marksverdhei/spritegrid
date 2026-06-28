@@ -17,7 +17,7 @@ class TestEnforceSymmetry:
             [[0, 0, 255, 255], [255, 255, 0, 255], [255, 255, 0, 255], [0, 0, 255, 255]],
             [[255, 0, 0, 255], [0, 255, 0, 255], [0, 255, 0, 255], [255, 0, 0, 255]],
         ], dtype=np.uint8)
-        img = Image.fromarray(arr, 'RGBA')
+        img = Image.fromarray(arr)
 
         result = enforce_symmetry(img)
         result_arr = np.array(result)
@@ -32,7 +32,7 @@ class TestEnforceSymmetry:
             [[255, 0, 0, 255], [0, 0, 0, 255], [128, 128, 128, 255], [100, 100, 100, 255]],
             [[0, 255, 0, 255], [255, 255, 255, 255], [200, 200, 200, 255], [150, 150, 150, 255]],
         ], dtype=np.uint8)
-        img = Image.fromarray(arr, 'RGBA')
+        img = Image.fromarray(arr)
 
         result = enforce_symmetry(img)
         result_arr = np.array(result)
@@ -53,7 +53,7 @@ class TestEnforceSymmetry:
             [[0, 0, 0, 0], [0, 0, 0, 0], [255, 0, 0, 255], [255, 0, 0, 255]],
             [[0, 0, 0, 0], [0, 0, 0, 0], [255, 0, 0, 255], [255, 0, 0, 255]],
         ], dtype=np.uint8)
-        img = Image.fromarray(arr, 'RGBA')
+        img = Image.fromarray(arr)
 
         result = enforce_symmetry(img)
         result_arr = np.array(result)
@@ -74,7 +74,7 @@ class TestEnforceSymmetry:
         arr = np.array([
             [[255, 0, 0, 255], [128, 128, 128, 255]],
         ], dtype=np.uint8)
-        img = Image.fromarray(arr, 'RGBA')
+        img = Image.fromarray(arr)
 
         result = enforce_symmetry(img)
         result_arr = np.array(result)
@@ -89,7 +89,7 @@ class TestEnforceSymmetry:
         arr = np.array([
             [[0, 0, 0, 255], [128, 128, 128, 255]],
         ], dtype=np.uint8)
-        img = Image.fromarray(arr, 'RGBA')
+        img = Image.fromarray(arr)
 
         result = enforce_symmetry(img)
         result_arr = np.array(result)
@@ -103,7 +103,7 @@ class TestEnforceSymmetry:
         arr = np.array([
             [[255, 0, 0, 255], [0, 255, 0, 255], [0, 0, 255, 255]],
         ], dtype=np.uint8)
-        img = Image.fromarray(arr, 'RGBA')
+        img = Image.fromarray(arr)
 
         result = enforce_symmetry(img)
         result_arr = np.array(result)
@@ -116,7 +116,7 @@ class TestEnforceSymmetry:
         arr = np.array([
             [[255, 0, 0], [128, 128, 128]],
         ], dtype=np.uint8)
-        img = Image.fromarray(arr, 'RGB')
+        img = Image.fromarray(arr)
 
         result = enforce_symmetry(img)
         result_arr = np.array(result)
@@ -127,7 +127,7 @@ class TestEnforceSymmetry:
     def test_preserves_image_dimensions(self):
         """Output should have same dimensions as input."""
         arr = np.zeros((10, 20, 4), dtype=np.uint8)
-        img = Image.fromarray(arr, 'RGBA')
+        img = Image.fromarray(arr)
 
         result = enforce_symmetry(img)
 
@@ -151,7 +151,7 @@ class TestEnforceSymmetryIntegration:
         # Right eye (dark gray - artifact)
         arr[1:3, 4, :3] = 30
 
-        img = Image.fromarray(arr, 'RGBA')
+        img = Image.fromarray(arr)
         result = enforce_symmetry(img)
         result_arr = np.array(result)
 

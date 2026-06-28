@@ -1,5 +1,56 @@
 import argparse
+import sys
+from typing import Tuple
+
 from .main import main
+
+
+def parse_aspect_ratio(ratio_str: str) -> Tuple[int, int]:
+    """Parse an aspect ratio string like '4:3' into (width, height) tuple."""
+    if ":" not in ratio_str:
+        raise argparse.ArgumentTypeError(
+            f"Invalid aspect ratio format: {ratio_str!r}. Use 'W:H' (e.g., '4:3' or '16:9')."
+        )
+    parts = ratio_str.split(":")
+    if len(parts) != 2:
+        raise argparse.ArgumentTypeError(
+            f"Invalid aspect ratio format: {ratio_str!r}. Use 'W:H' (e.g., '4:3')."
+        )
+    try:
+        w, h = int(parts[0]), int(parts[1])
+        if w <= 0 or h <= 0:
+            raise argparse.ArgumentTypeError(
+                f"Aspect ratio values must be positive integers: {ratio_str!r}"
+            )
+        return (w, h)
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"Invalid aspect ratio format: {ratio_str!r}. Values must be integers."
+        )
+
+
+def parse_size(size_str: str) -> Tuple[int, int]:
+    """Parse a size string like '32' or '32x48' into (width, height) tuple."""
+    if "x" in size_str.lower():
+        parts = size_str.lower().split("x")
+        if len(parts) != 2:
+            raise argparse.ArgumentTypeError(
+                f"Invalid size format: {size_str}. Use 'WxH' (e.g., '32x48') or single number (e.g., '32')."
+            )
+        try:
+            return (int(parts[0]), int(parts[1]))
+        except ValueError:
+            raise argparse.ArgumentTypeError(
+                f"Invalid size format: {size_str}. Width and height must be integers."
+            )
+    else:
+        try:
+            size = int(size_str)
+            return (size, size)
+        except ValueError:
+            raise argparse.ArgumentTypeError(
+                f"Invalid size format: {size_str}. Use 'WxH' (e.g., '32x48') or single number (e.g., '32')."
+            )
 
 
 def parse_args() -> argparse.Namespace:
@@ -84,6 +135,57 @@ def parse_args() -> argparse.Namespace:
              "Useful for symmetric sprites with minor AI upscaling artifacts.",
     )
 
+    parser.add_argument(
+        "--res",
+        type=parse_size,
+        metavar="WxH",
+        default=None,
+        help=(
+            "Force the output image to this exact resolution (e.g. '32x32' or '16x24') "
+            "using NEAREST resampling. Overrides --aspectratio."
+        ),
+    )
+
+    parser.add_argument(
+        "--aspectratio",
+        type=parse_aspect_ratio,
+        metavar="W:H",
+        default=None,
+        help=(
+            "Center-crop the output to the given aspect ratio (e.g. '4:3' or '16:9'). "
+            "Ignored when --res is specified."
+        ),
+    )
+
+    parser.add_argument(
+        "--compare",
+        action="store_true",
+        help="Output a side-by-side before/after comparison image instead of just the result.",
+    )
+
+    parser.add_argument(
+        "--offset",
+        type=parse_size,
+        metavar="XxY",
+        default=None,
+        help=(
+            "Manually translate the grid origin by X,Y pixels (e.g. '2x3'). "
+            "Shifts all sample centres right by X and down by Y. "
+            "Overrides --auto-offset."
+        ),
+    )
+
+    parser.add_argument(
+        "--auto-offset",
+        action="store_true",
+        default=False,
+        help=(
+            "Auto-detect the grid phase offset from the gradient profile and apply it. "
+            "Improves alignment when the grid does not start at pixel 0. "
+            "Ignored when --offset is specified."
+        ),
+    )
+
     args = parser.parse_args()
 
     # Ensure the crop argument is passed correctly
@@ -111,6 +213,184 @@ def cli() -> None:
         crop=args.crop,
         ascii_space_width=args.ascii,
         symmetric=args.symmetric,
+        res=args.res,
+        aspect_ratio=args.aspectratio,
+        compare=args.compare,
+        offset=args.offset,
+        auto_offset=args.auto_offset,
+    )
+
+
+def parse_crop_scale_args() -> argparse.Namespace:
+    """
+    Parse arguments for the crop-and-scale command.
+    """
+    parser = argparse.ArgumentParser(
+        prog="spritegrid-crop",
+        description=(
+            "Crop AI-generated images to content and scale to pixel art sizes. "
+            "This tool auto-detects the subject in high-resolution images, crops away "
+            "excess background, and scales to standard pixel art sizes (16x16, 32x32, 64x64, etc.) "
+            "using NEAREST resampling to preserve hard pixel edges."
+        ),
+    )
+    parser.add_argument(
+        "image_source",
+        type=str,
+        help="Path to the local image file or URL of the image.",
+    )
+    parser.add_argument(
+        "-s",
+        "--size",
+        type=parse_size,
+        default=(32, 32),
+        help=(
+            "Target size for the output. Can be a single number (e.g., '32' for 32x32) "
+            "or 'WxH' format (e.g., '32x48'). Default: 32"
+        ),
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        metavar="FILENAME",
+        dest="output_file",
+        type=str,
+        help="Save the output image to FILENAME.",
+    )
+    parser.add_argument(
+        "-i",
+        "--show",
+        action="store_true",
+        help="Display the output image using the default system viewer.",
+    )
+    parser.add_argument(
+        "-p",
+        "--padding",
+        type=int,
+        default=0,
+        help="Padding (in pixels) to add around detected content before scaling. Default: 0",
+    )
+    parser.add_argument(
+        "--alpha-threshold",
+        type=int,
+        default=0,
+        help=(
+            "Pixels with alpha <= this value are considered transparent. "
+            "Increase to catch semi-transparent backgrounds. Default: 0"
+        ),
+    )
+    parser.add_argument(
+        "--color-tolerance",
+        type=int,
+        default=0,
+        help=(
+            "Color distance tolerance for background detection (used for RGB images "
+            "or when --background-color is specified). Default: 0"
+        ),
+    )
+    parser.add_argument(
+        "--background-color",
+        type=str,
+        default=None,
+        help=(
+            "Specify background color as 'R,G,B' or 'R,G,B,A' (e.g., '255,255,255' for white). "
+            "If not specified, uses alpha channel for RGBA images or corner pixel for RGB."
+        ),
+    )
+    parser.add_argument(
+        "--no-aspect",
+        action="store_true",
+        help="Force output to exact target size without maintaining aspect ratio.",
+    )
+    parser.add_argument(
+        "--center",
+        action="store_true",
+        help=(
+            "Center the scaled content on a canvas of the exact target size. "
+            "Useful for ensuring consistent output dimensions."
+        ),
+    )
+
+    return parser.parse_args()
+
+
+def crop_scale_cli() -> None:
+    """
+    Entry point for the crop-and-scale command line interface.
+    """
+    from .main import load_image, handle_output
+    from .crop_and_scale import crop_and_scale, crop_and_scale_centered
+
+    args = parse_crop_scale_args()
+
+    # Parse background color if provided
+    background_color = None
+    if args.background_color:
+        try:
+            parts = [int(x.strip()) for x in args.background_color.split(",")]
+            if len(parts) not in (3, 4):
+                print(
+                    f"Error: Background color must be 'R,G,B' or 'R,G,B,A', got: {args.background_color}",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+            background_color = tuple(parts)
+        except ValueError:
+            print(
+                f"Error: Invalid background color format: {args.background_color}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+    # Load image
+    print(f"Loading image from: {args.image_source}")
+    image = load_image(args.image_source)
+
+    if image is None:
+        sys.exit(1)
+
+    print(f"Image loaded successfully ({image.width}x{image.height}, Mode: {image.mode}).")
+
+    # Determine target size
+    target_size = args.size
+    if target_size[0] == target_size[1]:
+        target_size = target_size[0]  # Use single int for square targets
+
+    # Process image
+    try:
+        if args.center:
+            output_image = crop_and_scale_centered(
+                image,
+                target_size=target_size,
+                padding=args.padding,
+                background_color=background_color,
+                alpha_threshold=args.alpha_threshold,
+                color_tolerance=args.color_tolerance,
+            )
+        else:
+            output_image = crop_and_scale(
+                image,
+                target_size=target_size,
+                padding=args.padding,
+                background_color=background_color,
+                alpha_threshold=args.alpha_threshold,
+                color_tolerance=args.color_tolerance,
+                maintain_aspect=not args.no_aspect,
+            )
+
+        print(f"Processed image: {output_image.width}x{output_image.height}")
+
+    except Exception as e:
+        print(f"Error processing image: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    # Handle output
+    handle_output(
+        output_image,
+        args.output_file,
+        args.show,
+        is_debug=False,
+        default_title=f"Crop & Scale: {args.image_source}",
     )
 
 

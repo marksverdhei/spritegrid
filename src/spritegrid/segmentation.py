@@ -12,8 +12,9 @@ def generate_segment_masks(
     h, w = im_arr.shape[:2]
     x, y = np.meshgrid(np.arange(w), np.arange(h))
 
-    # Flatten color and coordinates
-    color_features = im_arr.reshape(-1, 3).astype(np.float32)  # RGB
+    # Flatten color and coordinates (use only RGB, ignore alpha if present)
+    rgb_arr = im_arr[:, :, :3] if im_arr.shape[2] > 3 else im_arr
+    color_features = rgb_arr.reshape(-1, 3).astype(np.float32)
     spatial_features = (
         np.stack([x, y], axis=2).reshape(-1, 2).astype(np.float32)
     )  # x, y
@@ -76,10 +77,16 @@ def make_background_transparent(
             show_mask(mask, ax=ax, random_color=True)
         plt.axis("off")
 
-        # Convert the matplotlib figure to a PIL image
+        # Convert the matplotlib figure to a PIL image.
+        # fig.canvas.tostring_argb() returns ARGB bytes (4 bytes/pixel) — feeding
+        # those to Image.frombytes("RGB", ...) silently misinterpreted them as
+        # RGB (3 bytes/pixel), producing a color-shifted, bottom-truncated debug
+        # image (every visible pixel offset by one channel; the last quarter
+        # filled with garbage / black). Use buffer_rgba() so the byte format
+        # matches what PIL is told to parse.
         fig.canvas.draw()
         debug_image = Image.frombytes(
-            "RGB", fig.canvas.get_width_height(), fig.canvas.tostring_argb()
+            "RGBA", fig.canvas.get_width_height(), bytes(fig.canvas.buffer_rgba())
         )
         plt.close(fig)  # Close the figure to free memory
 

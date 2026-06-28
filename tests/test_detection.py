@@ -35,9 +35,9 @@ def create_test_image(img_w, img_h, grid_w, grid_h, color=False, noise_level=0):
     if color:
         # Stack grayscale array to create RGB
         array_rgb = np.stack([array] * 3, axis=-1)
-        return Image.fromarray(array_rgb, "RGB")
+        return Image.fromarray(array_rgb)
     else:
-        return Image.fromarray(array, "L")
+        return Image.fromarray(array)
 
 
 def test_detect_grid():

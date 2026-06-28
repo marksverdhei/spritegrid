@@ -1,13 +1,13 @@
 import io
 import sys
-from typing import Optional
+from typing import Optional, Tuple
 
 import requests
 from PIL import Image, ImageDraw
 
 from spritegrid.segmentation import make_background_transparent
 
-from .detection import detect_grid
+from .detection import detect_grid_with_offset
 from .utils import (
     convert_image_to_ascii,
     geometric_median,
@@ -90,6 +90,8 @@ def create_downsampled_image(
     bit: int = 8,
     kernel_size: tuple = (3, 3),
     median_type: str = "naive",
+    offset_x: int = 0,
+    offset_y: int = 0,
 ) -> Image.Image:
     """
     Creates a new image by sampling the geometric median pixel of each grid cell
@@ -103,6 +105,8 @@ def create_downsampled_image(
         num_cells_h: The number of grid cells vertically.
         bit: Number of bits per color channel.
         kernel_size: Size of the kernel to sample from (width, height).
+        offset_x: Horizontal grid translation in pixels (shifts sample centres right).
+        offset_y: Vertical grid translation in pixels (shifts sample centres down).
 
     Returns:
         A new PIL Image object with dimensions (num_cells_w, num_cells_h).
@@ -156,9 +160,9 @@ def create_downsampled_image(
 
     for y_new in range(num_cells_h):
         for x_new in range(num_cells_w):
-            # Calculate center coordinates in the original image
-            center_x = min(int(x_new * grid_w + grid_w / 2), original_width - 1)
-            center_y = min(int(y_new * grid_h + grid_h / 2), original_height - 1)
+            # Calculate center coordinates in the original image, applying grid offset
+            center_x = min(max(0, int(x_new * grid_w + grid_w / 2) + offset_x), original_width - 1)
+            center_y = min(max(0, int(y_new * grid_h + grid_h / 2) + offset_y), original_height - 1)
 
             # Calculate kernel boundaries
             half_kernel_w = kernel_w // 2
@@ -215,6 +219,69 @@ def create_downsampled_image(
 
     print("Downsampled image created.")
     return new_img
+
+
+def create_comparison_image(
+    before: Image.Image,
+    after: Image.Image,
+    label_height: int = 16,
+    divider_width: int = 2,
+) -> Image.Image:
+    """Create a side-by-side before/after comparison image.
+
+    The *after* image is scaled up to match the *before* image's dimensions
+    using NEAREST resampling to preserve hard pixel edges. Both panels are
+    labelled "Before" and "After" in white text on a dark bar.
+
+    Args:
+        before: The original (unprocessed) image.
+        after: The processed (downsampled) image.
+        label_height: Height in pixels of the label bar above each panel.
+        divider_width: Width of the vertical divider between panels.
+
+    Returns:
+        A new PIL Image containing the side-by-side comparison.
+    """
+    target_w, target_h = before.width, before.height
+
+    # Scale the after image up to the same canvas size using NEAREST (pixel-art safe)
+    after_scaled = after.resize((target_w, target_h), resample=Image.NEAREST)
+
+    # Ensure both are in RGBA so we can composite safely
+    before_rgb = before.convert("RGBA")
+    after_rgb = after_scaled.convert("RGBA")
+
+    total_w = target_w * 2 + divider_width
+    total_h = target_h + label_height
+
+    canvas = Image.new("RGBA", (total_w, total_h), (30, 30, 30, 255))
+
+    # Paste panels
+    canvas.paste(before_rgb, (0, label_height))
+    # Divider stays dark (already the background color)
+    canvas.paste(after_rgb, (target_w + divider_width, label_height))
+
+    # Draw labels (only if there is space for them)
+    if label_height > 0:
+        draw = ImageDraw.Draw(canvas)
+        label_bg = (40, 40, 40, 255)
+        text_color = (230, 230, 230, 255)
+
+        draw.rectangle([0, 0, target_w - 1, label_height - 1], fill=label_bg)
+        draw.rectangle([target_w + divider_width, 0, total_w - 1, label_height - 1], fill=label_bg)
+
+        # Centre each label text horizontally within its panel
+        before_bbox = draw.textbbox((0, 0), "Before")
+        after_bbox = draw.textbbox((0, 0), "After")
+
+        before_x = (target_w - (before_bbox[2] - before_bbox[0])) // 2
+        after_x = target_w + divider_width + (target_w - (after_bbox[2] - after_bbox[0])) // 2
+        label_y = (label_height - (before_bbox[3] - before_bbox[1])) // 2
+
+        draw.text((before_x, label_y), "Before", fill=text_color)
+        draw.text((after_x, label_y), "After", fill=text_color)
+
+    return canvas
 
 
 def handle_output(
@@ -290,6 +357,48 @@ def handle_png(image: Image.Image, save_path: str) -> None:
             file=sys.stderr,
         )
 
+def apply_resolution(
+    image: Image.Image,
+    target: Tuple[int, int],
+) -> Image.Image:
+    """Resize *image* to *target* (width, height) using NEAREST resampling.
+
+    NEAREST is used to preserve the hard pixel edges of pixel art.
+    """
+    if image.size == target:
+        return image
+    print(f"Resizing output from {image.width}x{image.height} to {target[0]}x{target[1]}...")
+    return image.resize(target, resample=Image.NEAREST)
+
+
+def apply_aspect_ratio(
+    image: Image.Image,
+    aspect: Tuple[int, int],
+) -> Image.Image:
+    """Center-crop *image* to the given aspect ratio (w_ratio, h_ratio).
+
+    The crop is the largest rectangle with the given aspect that fits inside
+    the image. The image is not padded — content may be lost at the edges.
+    """
+    ratio_w, ratio_h = aspect
+    src_w, src_h = image.size
+
+    # Target dimensions: constrain by whichever axis is the bottleneck
+    target_w = src_w
+    target_h = round(src_w * ratio_h / ratio_w)
+    if target_h > src_h:
+        target_h = src_h
+        target_w = round(src_h * ratio_w / ratio_h)
+
+    if (target_w, target_h) == (src_w, src_h):
+        return image
+
+    left = (src_w - target_w) // 2
+    top = (src_h - target_h) // 2
+    print(f"Cropping output from {src_w}x{src_h} to {target_w}x{target_h} ({ratio_w}:{ratio_h})...")
+    return image.crop((left, top, left + target_w, top + target_h))
+
+
 def main(
     image_source: str,
     min_grid: int = 4,
@@ -301,6 +410,11 @@ def main(
     crop: bool = False,
     ascii_space_width: Optional[int] = None,
     symmetric: bool = False,
+    res: Optional[Tuple[int, int]] = None,
+    aspect_ratio: Optional[Tuple[int, int]] = None,
+    compare: bool = False,
+    offset: Optional[Tuple[int, int]] = None,
+    auto_offset: bool = False,
 ) -> None:
     """
     Main function to parse arguments, load image, detect grid, and generate output/debug image.
@@ -331,7 +445,20 @@ def main(
     )
 
     # Call the grid detection function from the detection module
-    detected_w, detected_h = detect_grid(image, min_grid_size=min_grid)
+    detected_w, detected_h, auto_offset_x, auto_offset_y = detect_grid_with_offset(
+        image, min_grid_size=min_grid
+    )
+
+    # Apply manual offset if provided; auto-detected offset only if --auto-offset is set
+    if offset is not None:
+        offset_x, offset_y = offset
+        print(f"Using manual grid offset: ({offset_x}, {offset_y})")
+    elif auto_offset:
+        offset_x, offset_y = auto_offset_x, auto_offset_y
+        if detected_w > 0 and (offset_x != 0 or offset_y != 0):
+            print(f"Auto-detected grid offset: ({offset_x}, {offset_y})")
+    else:
+        offset_x, offset_y = 0, 0
 
     # Check the results returned by detect_grid
     if detected_w > 0 and detected_h > 0:
@@ -358,9 +485,17 @@ def main(
                 f"(Note: Estimated coverage based on cell count is {est_width}x{est_height}, original image is {image.width}x{image.height}. Check results.)"
             )
 
+        # Check for idempotence: if output dimensions match input, image is already clean
+        is_already_clean = (num_cells_w == image.width and num_cells_h == image.height)
+        if is_already_clean:
+            print("Image appears to be already processed (1:1 pixel grid). Returning unchanged.")
+
         if debug:
             print("\n--- Debug Mode ---")
             output_image = draw_grid_overlay(image, detected_w, detected_h)
+        elif is_already_clean:
+            # Image is already clean pixel art - return as-is for idempotence
+            output_image = image
         else:
             print("\n--- Generating Downsampled Image ---")
             output_image = create_downsampled_image(
@@ -370,6 +505,8 @@ def main(
                 num_cells_w,
                 num_cells_h,
                 quantize,
+                offset_x=offset_x,
+                offset_y=offset_y,
             )
 
             if remove_background == "after":
@@ -392,7 +529,24 @@ def main(
                 output_image = crop_to_content(output_image)
                 print(f"Image cropped to {output_image.width}x{output_image.height}")
 
-        if debug:
+            # Apply custom resolution (--res) — takes precedence over --aspectratio
+            if res is not None:
+                output_image = apply_resolution(output_image, res)
+            elif aspect_ratio is not None:
+                output_image = apply_aspect_ratio(output_image, aspect_ratio)
+
+        if compare and not debug and not is_already_clean:
+            print("\n--- Generating Before/After Comparison ---")
+            comparison = create_comparison_image(image, output_image)
+            handle_output(
+                comparison,
+                output_file,
+                show,
+                is_debug=False,
+                default_title=f"{image_source} — Before / After",
+                ascii_space_width=ascii_space_width,
+            )
+        elif debug:
             handle_output(
                 debug_image,
                 output_file,
@@ -412,6 +566,14 @@ def main(
             )
 
     else:
-        print("\n--- Failure ---")
-        print("Could not reliably determine grid dimensions.")
-        sys.exit(1)  # Exit with error code if detection failed
+        # No grid detected - image is likely already clean pixel art
+        print("\n--- No Grid Detected ---")
+        print("Image appears to be already clean pixel art. Returning unchanged.")
+        handle_output(
+            image,
+            output_file,
+            show,
+            is_debug=False,
+            default_title=f"{image_source} (unchanged)",
+            ascii_space_width=ascii_space_width,
+        )

@@ -1,0 +1,36 @@
+{
+  "last_node_id": 12,
+  "last_link_id": 13,
+  "nodes": [
+    {"id": 1, "type": "UNETLoader", "pos": [0, 0], "size": [315, 82], "flags": {}, "order": 0, "mode": 0, "inputs": [], "outputs": [{"name": "MODEL", "type": "MODEL", "links": [1], "slot_index": 0}], "title": "Load Diffusion Model", "properties": {}, "widgets_values": ["qwen_image_2512_fp8_e4m3fn.safetensors", "default"]},
+    {"id": 2, "type": "CLIPLoader", "pos": [0, 120], "size": [315, 100], "flags": {}, "order": 1, "mode": 0, "inputs": [], "outputs": [{"name": "CLIP", "type": "CLIP", "links": [2, 3], "slot_index": 0}], "properties": {}, "widgets_values": ["qwen_2.5_vl_7b_fp8_scaled.safetensors", "qwen_image", "default"]},
+    {"id": 3, "type": "VAELoader", "pos": [0, 260], "size": [315, 58], "flags": {}, "order": 2, "mode": 0, "inputs": [], "outputs": [{"name": "VAE", "type": "VAE", "links": [4], "slot_index": 0}], "properties": {}, "widgets_values": ["qwen_image_vae.safetensors"]},
+    {"id": 4, "type": "ModelSamplingAuraFlow", "pos": [350, 0], "size": [250, 58], "flags": {}, "order": 3, "mode": 0, "inputs": [{"name": "model", "type": "MODEL", "link": 1}], "outputs": [{"name": "MODEL", "type": "MODEL", "links": [5], "slot_index": 0}], "properties": {}, "widgets_values": [3]},
+    {"id": 5, "type": "CFGNorm", "pos": [350, 100], "size": [250, 58], "flags": {}, "order": 4, "mode": 0, "inputs": [{"name": "model", "type": "MODEL", "link": 5}], "outputs": [{"name": "patched_model", "type": "MODEL", "links": [6], "slot_index": 0}], "properties": {}, "widgets_values": [1]},
+    {"id": 6, "type": "CLIPTextEncode", "pos": [350, 200], "size": [350, 130], "flags": {}, "order": 5, "mode": 0, "inputs": [{"name": "clip", "type": "CLIP", "link": 2}], "outputs": [{"name": "CONDITIONING", "type": "CONDITIONING", "links": [7], "slot_index": 0}], "title": "Positive Prompt", "properties": {}, "widgets_values": ["pixel art knight character, 32x32 sprite, retro game style, single color pixels, clean pixel grid, transparent background, centered"]},
+    {"id": 7, "type": "CLIPTextEncode", "pos": [350, 370], "size": [350, 130], "flags": {}, "order": 6, "mode": 0, "inputs": [{"name": "clip", "type": "CLIP", "link": 3}], "outputs": [{"name": "CONDITIONING", "type": "CONDITIONING", "links": [8], "slot_index": 0}], "title": "Negative Prompt", "properties": {}, "widgets_values": ["blurry, gradient, anti-aliased, smooth, high resolution, realistic, soft edges"]},
+    {"id": 8, "type": "EmptyLatentImage", "pos": [350, 540], "size": [300, 106], "flags": {}, "order": 7, "mode": 0, "inputs": [], "outputs": [{"name": "LATENT", "type": "LATENT", "links": [9], "slot_index": 0}], "properties": {}, "widgets_values": [512, 512, 1]},
+    {"id": 9, "type": "KSampler", "pos": [750, 0], "size": [315, 262], "flags": {}, "order": 8, "mode": 0, "inputs": [{"name": "model", "type": "MODEL", "link": 6}, {"name": "positive", "type": "CONDITIONING", "link": 7}, {"name": "negative", "type": "CONDITIONING", "link": 8}, {"name": "latent_image", "type": "LATENT", "link": 9}], "outputs": [{"name": "LATENT", "type": "LATENT", "links": [10], "slot_index": 0}], "properties": {}, "widgets_values": [42, "fixed", 20, 4.0, "euler", "simple", 1]},
+    {"id": 10, "type": "VAEDecode", "pos": [750, 300], "size": [210, 46], "flags": {}, "order": 9, "mode": 0, "inputs": [{"name": "samples", "type": "LATENT", "link": 10}, {"name": "vae", "type": "VAE", "link": 4}], "outputs": [{"name": "IMAGE", "type": "IMAGE", "links": [11], "slot_index": 0}], "properties": {}},
+    {"id": 11, "type": "SpriteGrid", "pos": [1000, 300], "size": [315, 178], "flags": {}, "order": 10, "mode": 0, "inputs": [{"name": "image", "type": "IMAGE", "link": 11}], "outputs": [{"name": "IMAGE", "type": "IMAGE", "links": [12], "slot_index": 0}], "title": "SpriteGrid", "properties": {}, "widgets_values": [4, 8, "none", false]},
+    {"id": 12, "type": "SaveImage", "pos": [1000, 520], "size": [315, 270], "flags": {}, "order": 11, "mode": 0, "inputs": [{"name": "images", "type": "IMAGE", "link": 12}], "outputs": [], "properties": {}, "widgets_values": ["qwen_spritegrid"]}
+  ],
+  "links": [
+    [1, 1, 0, 4, 0, "MODEL"],
+    [2, 2, 0, 6, 0, "CLIP"],
+    [3, 2, 0, 7, 0, "CLIP"],
+    [4, 3, 0, 10, 1, "VAE"],
+    [5, 4, 0, 5, 0, "MODEL"],
+    [6, 5, 0, 9, 0, "MODEL"],
+    [7, 6, 0, 9, 1, "CONDITIONING"],
+    [8, 7, 0, 9, 2, "CONDITIONING"],
+    [9, 8, 0, 9, 3, "LATENT"],
+    [10, 9, 0, 10, 0, "LATENT"],
+    [11, 10, 0, 11, 0, "IMAGE"],
+    [12, 11, 0, 12, 0, "IMAGE"]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}
