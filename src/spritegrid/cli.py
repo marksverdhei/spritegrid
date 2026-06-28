@@ -128,6 +128,14 @@ def parse_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "-s",
+        "--symmetric",
+        action="store_true",
+        help="Enforce horizontal symmetry using confidence-based consensus. "
+             "Useful for symmetric sprites with minor AI upscaling artifacts.",
+    )
+
+    parser.add_argument(
         "--res",
         type=parse_size,
         metavar="WxH",
@@ -204,6 +212,7 @@ def cli() -> None:
         remove_background=args.remove_background,
         crop=args.crop,
         ascii_space_width=args.ascii,
+        symmetric=args.symmetric,
         res=args.res,
         aspect_ratio=args.aspectratio,
         compare=args.compare,

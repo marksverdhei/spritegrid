@@ -13,6 +13,7 @@ from .utils import (
     geometric_median,
     naive_median,
     crop_to_content,
+    enforce_symmetry,
 )
 import numpy as np
 
@@ -408,6 +409,7 @@ def main(
     remove_background: Optional[str] = None,
     crop: bool = False,
     ascii_space_width: Optional[int] = None,
+    symmetric: bool = False,
     res: Optional[Tuple[int, int]] = None,
     aspect_ratio: Optional[Tuple[int, int]] = None,
     compare: bool = False,
@@ -514,6 +516,12 @@ def main(
                     output_image, debug=True
                 )
                 print("Background removed successfully.")
+
+            # Apply symmetry enforcement if requested
+            if symmetric:
+                print("Enforcing horizontal symmetry...")
+                output_image = enforce_symmetry(output_image)
+                print("Symmetry enforced.")
 
             # Apply automatic cropping if requested
             if crop and output_image.mode == "RGBA":
