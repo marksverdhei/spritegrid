@@ -186,6 +186,27 @@ def parse_args() -> argparse.Namespace:
         ),
     )
 
+    timing = parser.add_mutually_exclusive_group()
+    timing.add_argument(
+        "--fps",
+        type=float,
+        default=None,
+        help=(
+            "Animation only: frames-per-second for the output (GIF/APNG/video). "
+            "Mutually exclusive with --duration. Defaults to the source's timing."
+        ),
+    )
+    timing.add_argument(
+        "--duration",
+        type=int,
+        default=None,
+        metavar="MS",
+        help=(
+            "Animation only: milliseconds per frame for the output. "
+            "Mutually exclusive with --fps. Defaults to the source's timing."
+        ),
+    )
+
     args = parser.parse_args()
 
     # Ensure the crop argument is passed correctly
@@ -200,8 +221,40 @@ def parse_args() -> argparse.Namespace:
 def cli() -> None:
     """
     The main entry point for the command line interface.
+
+    Multi-frame inputs (animated GIF/APNG, a directory of frames, or a video
+    file) are auto-routed to the animation pipeline, which detects ONE shared
+    grid across all frames. Everything else goes through the single-image path.
     """
     args = parse_args()
+
+    # Auto-route animations (lazy import keeps the still-image path cheap).
+    from .animation import is_animated_source
+
+    if is_animated_source(args.image_source):
+        from .animation import process_animation
+
+        try:
+            process_animation(
+                args.image_source,
+                output_file=args.output_file,
+                min_grid=args.min_grid,
+                quantize=args.quantize,
+                offset=args.offset,
+                auto_offset=args.auto_offset,
+                crop=args.crop,
+                symmetric=args.symmetric,
+                res=args.res,
+                aspect_ratio=args.aspectratio,
+                fps=args.fps,
+                duration=args.duration,
+                show=args.show,
+            )
+        except Exception as e:
+            print(f"Error processing animation: {e}", file=sys.stderr)
+            sys.exit(1)
+        return
+
     main(
         image_source=args.image_source,
         min_grid=args.min_grid,
