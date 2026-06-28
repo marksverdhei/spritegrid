@@ -101,6 +101,9 @@ spritegrid ai_pixelart.png -o compare.png --compare
 # Translate the sample-centre grid by a fixed pixel offset, or auto-detect it
 spritegrid ai_pixelart.png -o sprite.png --offset 2x3
 spritegrid ai_pixelart.png -o sprite.png --auto-offset
+
+# Enforce horizontal symmetry on sprites that should be mirror-symmetric
+spritegrid ai_pixelart.png -o sprite.png --symmetric
 ```
 
 **Options:**
@@ -113,8 +116,9 @@ spritegrid ai_pixelart.png -o sprite.png --auto-offset
 | `-d` | Show debug grid overlay |
 | `-i` | Display output image |
 | `-a, --ascii SCALE` | Output as ANSI art |
-| `-m, --min-grid N` | Minimum grid size (default: 4) |
+| `--min-grid N` | Minimum grid size (default: 4) |
 | `-q, --quantize N` | Color bits: 4-8 (default: 8) |
+| `-s, --symmetric` | Enforce horizontal symmetry (higher-confidence pixel of each mirror pair wins) |
 | `--res WxH` | Force exact output resolution, e.g. `32x32` (NEAREST; overrides `--aspectratio`) |
 | `--aspectratio W:H` | Center-crop output to an aspect ratio, e.g. `4:3` |
 | `--compare` | Output a side-by-side before/after comparison image |
