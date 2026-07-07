@@ -128,6 +128,14 @@ def parse_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "-H",
+        "--halfblock",
+        action="store_true",
+        help="Print the result to stdout as truecolor ANSI half-block pixel art "
+        "(U+2580 '▀', two pixels per cell). With -o FILE.txt, saves the ANSI instead.",
+    )
+
+    parser.add_argument(
         "-s",
         "--symmetric",
         action="store_true",
@@ -265,6 +273,7 @@ def cli() -> None:
         remove_background=args.remove_background,
         crop=args.crop,
         ascii_space_width=args.ascii,
+        halfblock=args.halfblock,
         symmetric=args.symmetric,
         res=args.res,
         aspect_ratio=args.aspectratio,

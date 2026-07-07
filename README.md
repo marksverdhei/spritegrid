@@ -122,7 +122,8 @@ spritegrid ai_pixelart.png -o sprite.png --symmetric
 | `-c` | Crop to content after processing |
 | `-d` | Show debug grid overlay |
 | `-i` | Display output image |
-| `-a, --ascii SCALE` | Output as ANSI art |
+| `-a, --ascii SCALE` | Output as ANSI art (one colored space per pixel; SCALE widens each) |
+| `-H, --halfblock` | Output as ANSI half-block pixel art (`▀`, two pixels per cell — crisper) |
 | `--min-grid N` | Minimum grid size (default: 4) |
 | `-q, --quantize N` | Color bits: 4-8 (default: 8) |
 | `-s, --symmetric` | Enforce horizontal symmetry (higher-confidence pixel of each mirror pair wins) |

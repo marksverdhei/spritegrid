@@ -26,6 +26,45 @@ def convert_image_to_ascii(
     return "".join(strings)
 
 
+def convert_image_to_halfblock(image: Image.Image) -> str:
+    """Render an image to truecolor ANSI using upper-half-block glyphs (U+2580 '▀').
+
+    Each character cell stacks TWO vertical pixels: the glyph's foreground colour is
+    the top pixel and its background colour is the bottom pixel. This doubles vertical
+    resolution over the one-space-per-pixel :func:`convert_image_to_ascii` and, because a
+    typical terminal cell is about twice as tall as it is wide, renders pixels roughly
+    square. Runs of identical cells reuse the previous colours to keep the string short.
+
+    Fully transparent pixels (alpha 0) are emitted as a default-coloured space so the
+    terminal background shows through.
+    """
+    image = image.convert("RGBA")
+    width, height = image.size
+    px = image.load()
+    if height % 2:  # need whole top/bottom pairs
+        height -= 1
+    strings = []
+    for y in range(0, height, 2):
+        last = None
+        for x in range(width):
+            tr, tg, tb, ta = px[x, y]
+            br, bg, bb, ba = px[x, y + 1]
+            if ta == 0 and ba == 0:
+                strings.append("\x1b[0m ")
+                last = None
+                continue
+            cur = (tr, tg, tb, br, bg, bb)
+            if cur == last:
+                strings.append("▀")
+            else:
+                strings.append(
+                    f"\x1b[38;2;{tr};{tg};{tb};48;2;{br};{bg};{bb}m▀"
+                )
+                last = cur
+        strings.append("\x1b[0m\n")
+    return "".join(strings)
+
+
 def naive_median(X: np.ndarray) -> np.ndarray:
     """
     Returns the naive median of points in X.

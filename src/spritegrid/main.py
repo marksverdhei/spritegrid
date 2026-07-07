@@ -10,6 +10,7 @@ from spritegrid.segmentation import make_background_transparent
 from .detection import detect_grid_with_offset
 from .utils import (
     convert_image_to_ascii,
+    convert_image_to_halfblock,
     geometric_median,
     naive_median,
     crop_to_content,
@@ -356,13 +357,20 @@ def handle_output(
     is_debug: bool,
     default_title: str = "Spritegrid Output",
     ascii_space_width: Optional[int] = None,
+    halfblock: bool = False,
 ):
     """Helper function to save or show the processed image."""
     if save_path is not None:
-        if save_path.endswith(".txt") and ascii_space_width is None:
+        if save_path.endswith(".txt") and ascii_space_width is None and not halfblock:
             ascii_space_width = 1
 
-    show_stdout = (ascii_space_width is not None and save_path is None)
+    def _ansi(img: Image.Image) -> str:
+        if halfblock:
+            return convert_image_to_halfblock(img)
+        return convert_image_to_ascii(img, ascii_space_width)
+
+    ansi_requested = halfblock or ascii_space_width is not None
+    show_stdout = (ansi_requested and save_path is None)
     show_image = (show_flag or (save_path is None and not show_stdout))
 
     # Default action for debug mode if no other option is chosen
@@ -375,16 +383,15 @@ def handle_output(
         if save_path.endswith(".png"):
             handle_png(image, save_path)
         elif save_path.endswith(".txt"):
-            image_string = convert_image_to_ascii(image, ascii_space_width)
-            handle_txt(image_string, save_path)
+            handle_txt(_ansi(image), save_path)
     else:
         if show_image:
             type_str = "Debug Overlay" if is_debug else "Downsampled Image"
             title = f"{default_title} - {type_str}"
             handle_show_image(image, title)
-        
+
         if show_stdout:
-            print(convert_image_to_ascii(image, ascii_space_width))
+            print(_ansi(image))
 
 
 def handle_show_image(image: Image.Image, title: str) -> None:
@@ -474,6 +481,7 @@ def main(
     remove_background: Optional[str] = None,
     crop: bool = False,
     ascii_space_width: Optional[int] = None,
+    halfblock: bool = False,
     symmetric: bool = False,
     res: Optional[Tuple[int, int]] = None,
     aspect_ratio: Optional[Tuple[int, int]] = None,
@@ -610,6 +618,7 @@ def main(
                 is_debug=False,
                 default_title=f"{image_source} — Before / After",
                 ascii_space_width=ascii_space_width,
+                halfblock=halfblock,
             )
         elif debug:
             handle_output(
@@ -619,6 +628,7 @@ def main(
                 is_debug=True,
                 default_title=f"{image_source} ({num_cells_w}x{num_cells_h})",
                 ascii_space_width=ascii_space_width,
+                halfblock=halfblock,
             )
         else:
             handle_output(
@@ -628,6 +638,7 @@ def main(
                 is_debug=False,
                 default_title=f"{image_source} ({num_cells_w}x{num_cells_h})",
                 ascii_space_width=ascii_space_width,
+                halfblock=halfblock,
             )
 
     else:
@@ -641,4 +652,5 @@ def main(
             is_debug=False,
             default_title=f"{image_source} (unchanged)",
             ascii_space_width=ascii_space_width,
+            halfblock=halfblock,
         )
