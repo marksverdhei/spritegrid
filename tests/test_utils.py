@@ -9,6 +9,7 @@ from PIL import Image
 
 from spritegrid.utils import (
     convert_image_to_ascii,
+    convert_image_to_halfblock,
     crop_to_content,
     geometric_median,
     naive_median,
@@ -139,6 +140,69 @@ class TestConvertImageToAscii:
     def test_returns_string(self):
         img = _rgba(2, 2)
         assert isinstance(convert_image_to_ascii(img), str)
+
+
+# ---------------------------------------------------------------------------
+# convert_image_to_halfblock
+# ---------------------------------------------------------------------------
+
+def _rgba_rows(colors):
+    """Build a 1-px-wide image, one row per color in *colors* (RGBA tuples)."""
+    arr = np.array([[c] for c in colors], dtype=np.uint8)
+    return Image.fromarray(arr)
+
+
+class TestConvertImageToHalfblock:
+    def test_returns_string(self):
+        assert isinstance(convert_image_to_halfblock(_rgba(2, 2)), str)
+
+    def test_opaque_cell_has_both_fg_and_bg(self):
+        result = convert_image_to_halfblock(_rgba(1, 2, (255, 0, 0, 255)))
+        assert "\x1b[38;2;" in result  # foreground (top pixel)
+        assert "48;2;" in result       # background (bottom pixel)
+        assert "▀" in result
+
+    def test_top_is_fg_bottom_is_bg(self):
+        # top row red, bottom row blue -> fg red, bg blue
+        img = _rgba_rows([(255, 0, 0, 255), (0, 0, 255, 255)])
+        result = convert_image_to_halfblock(img)
+        assert "38;2;255;0;0" in result
+        assert "48;2;0;0;255" in result
+
+    def test_one_cell_row_per_two_pixel_rows(self):
+        # 4 px tall -> 2 half-block rows -> 2 newlines
+        assert convert_image_to_halfblock(_rgba(2, 4)).count("\n") == 2
+
+    def test_odd_height_preserves_last_row(self):
+        # 3 px tall -> one complete pair plus one top-only row.
+        result = convert_image_to_halfblock(_rgba(2, 3, (10, 20, 30, 255)))
+        assert result.count("\n") == 2
+        assert "0;38;2;10;20;30m▀" in result
+
+    def test_single_row_is_not_dropped(self):
+        result = convert_image_to_halfblock(_rgba(1, 1, (10, 20, 30, 255)))
+        assert result.count("\n") == 1
+        assert "0;38;2;10;20;30m▀" in result
+
+    def test_transparent_pair_is_uncolored_space(self):
+        img = _transparent(1, 2)
+        result = convert_image_to_halfblock(img)
+        assert "38;2;" not in result and "48;2;" not in result
+        assert " " in result
+
+    def test_transparent_bottom_uses_default_background(self):
+        img = _rgba_rows([(10, 20, 30, 255), (200, 210, 220, 0)])
+        result = convert_image_to_halfblock(img)
+        assert "0;38;2;10;20;30m▀" in result
+        assert "48;2;" not in result
+        assert "200;210;220" not in result
+
+    def test_transparent_top_uses_lower_halfblock_and_default_background(self):
+        img = _rgba_rows([(200, 210, 220, 0), (10, 20, 30, 255)])
+        result = convert_image_to_halfblock(img)
+        assert "0;38;2;10;20;30m▄" in result
+        assert "48;2;" not in result
+        assert "200;210;220" not in result
 
 
 # ---------------------------------------------------------------------------

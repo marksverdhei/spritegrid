@@ -118,13 +118,22 @@ def parse_args() -> argparse.Namespace:
         help="Automatically crop the image to the first and last rows and columns where all pixels aren't transparent.",
     )
 
-    parser.add_argument(
+    ansi_output = parser.add_mutually_exclusive_group()
+    ansi_output.add_argument(
         "-a",
         "--ascii",
         nargs="?",
         choices=[1, 2],
         const=1,
         type=int,
+    )
+
+    ansi_output.add_argument(
+        "-H",
+        "--halfblock",
+        action="store_true",
+        help="Print the result to stdout as truecolor ANSI half-block pixel art "
+        "(U+2580 '▀', two pixels per cell). With -o FILE.txt, saves the ANSI instead.",
     )
 
     parser.add_argument(
@@ -232,6 +241,13 @@ def cli() -> None:
     from .animation import is_animated_source
 
     if is_animated_source(args.image_source):
+        if args.ascii is not None or args.halfblock:
+            print(
+                "Error: --ascii and --halfblock are only supported for still images.",
+                file=sys.stderr,
+            )
+            sys.exit(2)
+
         from .animation import process_animation
 
         try:
@@ -265,6 +281,7 @@ def cli() -> None:
         remove_background=args.remove_background,
         crop=args.crop,
         ascii_space_width=args.ascii,
+        halfblock=args.halfblock,
         symmetric=args.symmetric,
         res=args.res,
         aspect_ratio=args.aspectratio,
