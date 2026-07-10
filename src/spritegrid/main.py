@@ -360,6 +360,9 @@ def handle_output(
     halfblock: bool = False,
 ):
     """Helper function to save or show the processed image."""
+    if halfblock and ascii_space_width is not None:
+        raise ValueError("ascii_space_width and halfblock are mutually exclusive")
+
     if save_path is not None:
         if save_path.endswith(".txt") and ascii_space_width is None and not halfblock:
             ascii_space_width = 1
@@ -391,7 +394,7 @@ def handle_output(
             handle_show_image(image, title)
 
         if show_stdout:
-            print(_ansi(image))
+            print(_ansi(image), end="")
 
 
 def handle_show_image(image: Image.Image, title: str) -> None:

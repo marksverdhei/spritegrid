@@ -173,15 +173,36 @@ class TestConvertImageToHalfblock:
         # 4 px tall -> 2 half-block rows -> 2 newlines
         assert convert_image_to_halfblock(_rgba(2, 4)).count("\n") == 2
 
-    def test_odd_height_drops_last_row(self):
-        # 3 px tall -> only 1 complete pair -> 1 row
-        assert convert_image_to_halfblock(_rgba(2, 3)).count("\n") == 1
+    def test_odd_height_preserves_last_row(self):
+        # 3 px tall -> one complete pair plus one top-only row.
+        result = convert_image_to_halfblock(_rgba(2, 3, (10, 20, 30, 255)))
+        assert result.count("\n") == 2
+        assert "0;38;2;10;20;30m▀" in result
+
+    def test_single_row_is_not_dropped(self):
+        result = convert_image_to_halfblock(_rgba(1, 1, (10, 20, 30, 255)))
+        assert result.count("\n") == 1
+        assert "0;38;2;10;20;30m▀" in result
 
     def test_transparent_pair_is_uncolored_space(self):
         img = _transparent(1, 2)
         result = convert_image_to_halfblock(img)
         assert "38;2;" not in result and "48;2;" not in result
         assert " " in result
+
+    def test_transparent_bottom_uses_default_background(self):
+        img = _rgba_rows([(10, 20, 30, 255), (200, 210, 220, 0)])
+        result = convert_image_to_halfblock(img)
+        assert "0;38;2;10;20;30m▀" in result
+        assert "48;2;" not in result
+        assert "200;210;220" not in result
+
+    def test_transparent_top_uses_lower_halfblock_and_default_background(self):
+        img = _rgba_rows([(200, 210, 220, 0), (10, 20, 30, 255)])
+        result = convert_image_to_halfblock(img)
+        assert "0;38;2;10;20;30m▄" in result
+        assert "48;2;" not in result
+        assert "200;210;220" not in result
 
 
 # ---------------------------------------------------------------------------

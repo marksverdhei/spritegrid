@@ -1,7 +1,6 @@
 """Tests for spritegrid.main utility functions: load_image, handle_txt, handle_png, create_downsampled_image."""
 
 import os
-import sys
 from io import BytesIO
 from unittest.mock import patch, MagicMock
 
@@ -114,6 +113,33 @@ class TestHandlePng:
         handle_png(img, "/nonexistent/dir/out.png")
         err = capsys.readouterr().err
         assert "Error" in err
+
+
+# ---------------------------------------------------------------------------
+# handle_output ANSI modes
+# ---------------------------------------------------------------------------
+
+class TestHandleOutputAnsi:
+    def test_halfblock_stdout_has_no_extra_blank_row(self, capsys):
+        from spritegrid.main import handle_output
+
+        image = Image.new("RGB", (1, 2), (10, 20, 30))
+        handle_output(image, None, False, False, halfblock=True)
+        assert capsys.readouterr().out.count("\n") == 1
+
+    def test_ansi_modes_are_mutually_exclusive_for_direct_callers(self):
+        from spritegrid.main import handle_output
+
+        image = Image.new("RGB", (1, 2), (10, 20, 30))
+        with pytest.raises(ValueError, match="mutually exclusive"):
+            handle_output(
+                image,
+                None,
+                False,
+                False,
+                ascii_space_width=1,
+                halfblock=True,
+            )
 
 
 # ---------------------------------------------------------------------------

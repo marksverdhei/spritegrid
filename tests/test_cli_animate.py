@@ -75,6 +75,24 @@ class TestTimingFlags:
                       "--fps", "10", "--duration", "100"])
 
 
+class TestAnsiFlags:
+    def test_ascii_and_halfblock_are_mutually_exclusive(self):
+        with pytest.raises(SystemExit) as exc:
+            _run_cli(["still.png", "--ascii", "--halfblock"])
+        assert exc.value.code == 2
+
+    @pytest.mark.parametrize("flag", ["--ascii", "--halfblock"])
+    def test_ansi_output_is_rejected_for_animations(self, tmp_path, flag, capsys):
+        src = tmp_path / "in.gif"
+        save_frames(_grid_frames(2), str(src))
+
+        with pytest.raises(SystemExit) as exc:
+            _run_cli([str(src), flag])
+
+        assert exc.value.code == 2
+        assert "only supported for still images" in capsys.readouterr().err
+
+
 class TestClassifier:
     def test_directory_is_animated(self, tmp_path):
         d = tmp_path / "frames"

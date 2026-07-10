@@ -35,30 +35,44 @@ def convert_image_to_halfblock(image: Image.Image) -> str:
     typical terminal cell is about twice as tall as it is wide, renders pixels roughly
     square. Runs of identical cells reuse the previous colours to keep the string short.
 
-    Fully transparent pixels (alpha 0) are emitted as a default-coloured space so the
-    terminal background shows through.
+    Transparent pixels (alpha 0) use the terminal's default background. If only one pixel
+    in a pair is visible, an upper or lower half-block renders that pixel without painting
+    the transparent half. An odd final row is paired with a transparent bottom row.
     """
     image = image.convert("RGBA")
     width, height = image.size
     px = image.load()
-    if height % 2:  # need whole top/bottom pairs
-        height -= 1
     strings = []
     for y in range(0, height, 2):
         last = None
         for x in range(width):
             tr, tg, tb, ta = px[x, y]
-            br, bg, bb, ba = px[x, y + 1]
-            if ta == 0 and ba == 0:
-                strings.append("\x1b[0m ")
-                last = None
-                continue
-            cur = (tr, tg, tb, br, bg, bb)
+            if y + 1 < height:
+                br, bg, bb, ba = px[x, y + 1]
+            else:
+                br, bg, bb, ba = 0, 0, 0, 0
+
+            top_visible = ta != 0
+            bottom_visible = ba != 0
+            if top_visible and bottom_visible:
+                cur = ("▀", tr, tg, tb, br, bg, bb)
+                escape = f"\x1b[38;2;{tr};{tg};{tb};48;2;{br};{bg};{bb}m"
+            elif top_visible:
+                cur = ("▀", tr, tg, tb)
+                escape = f"\x1b[0;38;2;{tr};{tg};{tb}m"
+            elif bottom_visible:
+                cur = ("▄", br, bg, bb)
+                escape = f"\x1b[0;38;2;{br};{bg};{bb}m"
+            else:
+                cur = (" ",)
+                escape = "\x1b[0m"
+
+            glyph = cur[0]
             if cur == last:
-                strings.append("▀")
+                strings.append(glyph)
             else:
                 strings.append(
-                    f"\x1b[38;2;{tr};{tg};{tb};48;2;{br};{bg};{bb}m▀"
+                    f"{escape}{glyph}"
                 )
                 last = cur
         strings.append("\x1b[0m\n")

@@ -118,7 +118,8 @@ def parse_args() -> argparse.Namespace:
         help="Automatically crop the image to the first and last rows and columns where all pixels aren't transparent.",
     )
 
-    parser.add_argument(
+    ansi_output = parser.add_mutually_exclusive_group()
+    ansi_output.add_argument(
         "-a",
         "--ascii",
         nargs="?",
@@ -127,7 +128,7 @@ def parse_args() -> argparse.Namespace:
         type=int,
     )
 
-    parser.add_argument(
+    ansi_output.add_argument(
         "-H",
         "--halfblock",
         action="store_true",
@@ -240,6 +241,13 @@ def cli() -> None:
     from .animation import is_animated_source
 
     if is_animated_source(args.image_source):
+        if args.ascii is not None or args.halfblock:
+            print(
+                "Error: --ascii and --halfblock are only supported for still images.",
+                file=sys.stderr,
+            )
+            sys.exit(2)
+
         from .animation import process_animation
 
         try:
