@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
+from spritegrid.detection import analyze_grid
 from spritegrid.main import main
 from spritegrid.walkthrough import (
     WalkthroughTrace,
@@ -42,17 +43,15 @@ def test_trace_snapshots_do_not_alias_pipeline_images():
 def test_grid_and_sampling_trace_exact_detector_data():
     source = _grid_image()
     output = source.resize((6, 6), Image.Resampling.NEAREST)
-    profile_h = np.arange(source.width, dtype=float)
-    profile_v = np.arange(source.height, dtype=float) * 2
+    analysis = analyze_grid(source)
     trace = WalkthroughTrace("memory")
 
-    record_grid_discovery(trace, source, profile_h, profile_v, 6, 6, 1, 2, 0, 0)
+    record_grid_discovery(trace, source, analysis, 0, 0)
     record_sampling(trace, source, output, 6, 6, 1, 2)
 
     grid, sampling = trace.steps
-    np.testing.assert_array_equal(grid.details["profile_h"], profile_h)
-    np.testing.assert_array_equal(grid.details["profile_v"], profile_v)
-    assert (grid.details["grid_w"], grid.details["grid_h"]) == (6, 6)
+    assert grid.details["analysis"] is analysis
+    assert grid.details["analysis"].result == analysis.result
     assert (grid.details["applied_offset_x"], grid.details["applied_offset_y"]) == (
         0,
         0,
@@ -69,10 +68,6 @@ def test_walkthrough_output_is_pixel_identical(monkeypatch, tmp_path):
     video = tmp_path / "walkthrough.mp4"
     _grid_image().save(source)
 
-    monkeypatch.setattr(
-        "spritegrid.main.detect_grid_with_offset",
-        lambda *_args, **_kwargs: (6, 6, 0, 0),
-    )
     captured = {}
 
     def fake_render(trace, output_path):

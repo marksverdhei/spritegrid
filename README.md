@@ -42,11 +42,16 @@ spritegrid ai_pixelart.png \
   --walkthrough transformation.mp4
 ```
 
-The video follows the real still-image pipeline: image loading, horizontal and
-vertical local grid-candidate profiles, selected grid and phase, an exact local
-colour-sampling kernel, optional background removal, optional crop/symmetry, and
-nearest-neighbour resizing. The recorder only copies intermediate images after
-each normal transformation, so enabling a walkthrough cannot change the output
+The video follows the real still-image pipeline. Grid discovery is shown from
+the detector's own canonical diagnostics: grayscale conversion, adjacent-pixel
+gradients, axis sums, Gaussian smoothing, peak detection, local peak-to-peak
+spacing candidates, modal-spacing confidence, acceptance gates, and the complete
+phase scan. It then shows the exact local colour-sampling kernel, optional
+background removal, optional crop/symmetry, and nearest-neighbour resizing.
+
+The renderer does not reimplement grid detection. The normal detector produces
+the result and the diagnostics together in one pass, and the video only draws
+those recorded values. Enabling a walkthrough therefore cannot change the output
 pixels. Animation inputs are not yet supported by `--walkthrough`.
 
 ---

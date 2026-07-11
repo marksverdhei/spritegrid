@@ -15,6 +15,8 @@ from typing import Any
 import numpy as np
 from PIL import Image
 
+from .detection import GridDetectionAnalysis, SpacingAnalysis
+
 
 @dataclass
 class WalkthroughStep:
@@ -48,27 +50,17 @@ class WalkthroughTrace:
 def record_grid_discovery(
     trace: WalkthroughTrace,
     image: Image.Image,
-    profile_h: np.ndarray,
-    profile_v: np.ndarray,
-    grid_w: int,
-    grid_h: int,
-    detected_offset_x: int,
-    detected_offset_y: int,
+    analysis: GridDetectionAnalysis,
     applied_offset_x: int,
     applied_offset_y: int,
 ) -> None:
-    """Record the exact detector inputs and selected grid."""
+    """Record the canonical analysis object returned by the detector."""
 
     trace.add(
         "grid",
-        "Discover grid and local candidates",
+        "How SpriteGrid discovers the grid",
         image,
-        profile_h=np.asarray(profile_h, dtype=float).copy(),
-        profile_v=np.asarray(profile_v, dtype=float).copy(),
-        grid_w=grid_w,
-        grid_h=grid_h,
-        detected_offset_x=detected_offset_x,
-        detected_offset_y=detected_offset_y,
+        analysis=analysis,
         applied_offset_x=applied_offset_x,
         applied_offset_y=applied_offset_y,
     )
@@ -118,6 +110,7 @@ def record_sampling(
         representative_center=(center_x, center_y),
         kernel_box=(x0, y0, x1, y1),
         sampled_color=output.getpixel((cell_x, cell_y)),
+        sample_method="channel-wise median",
         grid_w=grid_w,
         grid_h=grid_h,
     )
@@ -195,101 +188,274 @@ def render_walkthrough(
             )
 
         def _show_grid(self, step: WalkthroughStep) -> None:
-            heading = self._heading(step.title)
-            picture = self._image(step.image, height=4.4).shift(manim.LEFT * 2.2)
-            grid_w = int(step.details["grid_w"])
-            grid_h = int(step.details["grid_h"])
-            overlay = manim.VGroup()
-            if grid_w > 0 and grid_h > 0:
-                left, right = picture.get_left()[0], picture.get_right()[0]
-                bottom, top = picture.get_bottom()[1], picture.get_top()[1]
-                phase_x = int(step.details["detected_offset_x"]) % grid_w
-                phase_y = int(step.details["detected_offset_y"]) % grid_h
-                for x in range(phase_x or grid_w, step.image.width, grid_w):
-                    sx = left + (x / step.image.width) * (right - left)
-                    overlay.add(
-                        manim.Line(
-                            [sx, bottom, 0],
-                            [sx, top, 0],
-                            color=manim.RED,
-                            stroke_width=1,
-                        )
-                    )
-                for y in range(phase_y or grid_h, step.image.height, grid_h):
-                    sy = top - (y / step.image.height) * (top - bottom)
-                    overlay.add(
-                        manim.Line(
-                            [left, sy, 0],
-                            [right, sy, 0],
-                            color=manim.RED,
-                            stroke_width=1,
-                        )
-                    )
+            analysis: GridDetectionAnalysis = step.details["analysis"]
+            signals = analysis.signals
+            if signals is None:
+                raise ValueError("Image walkthrough requires detector signal diagnostics")
 
-            profile_h = np.asarray(step.details["profile_h"])
-            profile_v = np.asarray(step.details["profile_v"])
-            h_spark = (
-                manim.Sparkle()
-                if profile_h.size == 0
-                else self._sparkline(profile_h, 3.6, 1.1)
+            source = self._image(step.image, height=3.7)
+            gray = self._array_image(signals.grayscale, height=3.7)
+            first = manim.Group(
+                manim.Group(source, manim.Text("input", font_size=21)).arrange(
+                    manim.DOWN, buff=0.15
+                ),
+                manim.Arrow(manim.LEFT, manim.RIGHT, buff=0.1),
+                manim.Group(gray, manim.Text("detector signal", font_size=21)).arrange(
+                    manim.DOWN, buff=0.15
+                ),
+            ).arrange(manim.RIGHT, buff=0.45)
+            self._detector_slide(
+                "1. Convert to the detector's grayscale signal",
+                first,
+                f"Canonical conversion: {signals.grayscale_method}. Transparency is not composited.",
             )
-            v_spark = (
-                manim.Sparkle()
-                if profile_v.size == 0
-                else self._sparkline(profile_v, 3.6, 1.1)
+
+            grad_h = self._array_image(signals.gradient_h, height=3.25)
+            grad_v = self._array_image(signals.gradient_v, height=3.25)
+            gradients = manim.Group(
+                manim.Group(
+                    grad_h,
+                    manim.Text("|pixel[x+1] - pixel[x]|", font_size=19),
+                    manim.Text("x / width evidence", font_size=18, color=manim.BLUE_C),
+                ).arrange(manim.DOWN, buff=0.1),
+                manim.Group(
+                    grad_v,
+                    manim.Text("|pixel[y+1] - pixel[y]|", font_size=19),
+                    manim.Text("y / height evidence", font_size=18, color=manim.GREEN_C),
+                ).arrange(manim.DOWN, buff=0.1),
+            ).arrange(manim.RIGHT, buff=0.5)
+            self._detector_slide(
+                "2. Measure every adjacent-pixel change",
+                gradients,
+                "Bright pixels are large absolute differences. The last row/column is repeated, so its difference is zero.",
             )
-            charts = (
-                manim.VGroup(
-                    manim.Text("horizontal edge profile", font_size=20),
-                    h_spark,
-                    manim.Text("vertical edge profile", font_size=20),
-                    v_spark,
-                )
-                .arrange(manim.DOWN, buff=0.2)
-                .shift(manim.RIGHT * 3.0)
+
+            charts = manim.VGroup(
+                self._profile_chart(
+                    signals.raw_profile_h, signals.profile_h, analysis.horizontal,
+                    "x profile: sum each gradient column", manim.BLUE_C,
+                ),
+                self._profile_chart(
+                    signals.raw_profile_v, signals.profile_v, analysis.vertical,
+                    "y profile: sum each gradient row", manim.GREEN_C,
+                ),
+            ).arrange(manim.DOWN, buff=0.35)
+            self._detector_slide(
+                "3. Collapse the image into two 1D edge profiles",
+                charts,
+                f"Gray = raw sums. Colour = Gaussian-smoothed signal (sigma = {signals.smoothing_sigma:g}).",
             )
-            if grid_w and grid_h:
-                detected = (
-                    step.details["detected_offset_x"],
-                    step.details["detected_offset_y"],
-                )
-                applied = (
-                    step.details["applied_offset_x"],
-                    step.details["applied_offset_y"],
-                )
-                result_text = (
-                    f"selected cell: {grid_w} x {grid_h}px   "
-                    f"detected phase: {detected}   sampling offset: {applied}"
+
+            candidates = manim.VGroup(
+                self._candidate_panel("x / grid width", analysis.horizontal),
+                self._candidate_panel("y / grid height", analysis.vertical),
+            ).arrange(manim.RIGHT, buff=0.55)
+            self._detector_slide(
+                "4. Find peaks, then measure every local interval",
+                candidates,
+                "SciPy find_peaks uses the shown minimum distance and prominence. Adjacent peak gaps are the local spacing candidates.",
+                hold=2.0,
+            )
+
+            confidence = manim.VGroup(
+                self._confidence_panel("x / width", analysis.horizontal),
+                self._confidence_panel("y / height", analysis.vertical),
+            ).arrange(manim.RIGHT, buff=0.55)
+            gate = manim.Text(
+                f"mean confidence = {analysis.average_confidence:.3f}  "
+                f"(required >= {analysis.min_confidence:g})    "
+                f"aspect = {analysis.aspect_ratio:.3f}  (required 0.5..2.0)",
+                font_size=21,
+            ).next_to(confidence, manim.DOWN, buff=0.3)
+            decision = manim.VGroup(confidence, gate)
+            self._detector_slide(
+                "5. Select the modal spacing and test confidence",
+                decision,
+                "confidence = (spacing consistency + capped peak coverage) / 2",
+                hold=2.0,
+            )
+
+            grid_w, grid_h, detected_x, detected_y = analysis.result
+            if analysis.rejection_reason is None:
+                phases = manim.VGroup(
+                    self._phase_panel("x phase", analysis.offset_x, manim.BLUE_C),
+                    self._phase_panel("y phase", analysis.offset_y, manim.GREEN_C),
+                ).arrange(manim.RIGHT, buff=0.7)
+                self._detector_slide(
+                    "6. Scan every possible grid phase",
+                    phases,
+                    "For each offset 0..spacing-1, sum the smoothed profile at offset + k*spacing; the maximum wins.",
+                    hold=1.8,
                 )
             else:
-                result_text = "no reliable repeating grid selected"
-            result = self._caption(result_text)
-            self.play(manim.Write(heading), manim.FadeIn(picture), manim.Create(charts))
-            if len(overlay) > 0:
-                self.play(manim.Create(overlay))
-            self.play(manim.FadeIn(result))
-            self.wait(1.0)
-            self.play(
-                *[manim.FadeOut(m) for m in (heading, picture, overlay, charts, result)]
+                rejected = manim.Text(
+                    f"Rejected: {analysis.rejection_reason.replace('_', ' ')}",
+                    font_size=35, color=manim.RED_C,
+                )
+                self._detector_slide(
+                    "6. Apply the detector's acceptance gates", rejected,
+                    "No phase scan runs after a rejected spacing decision.",
+                )
+
+            picture = self._image(step.image, height=4.5)
+            overlay = self._grid_overlay(
+                picture, step.image.size, grid_w, grid_h, detected_x, detected_y
+            )
+            applied = (
+                step.details["applied_offset_x"], step.details["applied_offset_y"]
+            )
+            if grid_w and grid_h:
+                outcome = (
+                    f"accepted cell {grid_w} x {grid_h}px | detected phase "
+                    f"({detected_x}, {detected_y}) | sampling offset {applied}"
+                )
+            else:
+                outcome = "no reliable repeating grid selected"
+            self._detector_slide(
+                "7. The accepted grid, over the original pixels",
+                manim.Group(picture, overlay), outcome, hold=1.5,
             )
 
-        def _sparkline(self, values: np.ndarray, width: float, height: float):
+        def _detector_slide(self, title, body, caption, hold=1.25):
+            heading = self._heading(title)
+            if heading.width > 12.4:
+                heading.scale_to_fit_width(12.4)
+            if body.width > 12.2:
+                body.scale_to_fit_width(12.2)
+            if body.height > 5.2:
+                body.scale_to_fit_height(5.2)
+            body.move_to(manim.ORIGIN + manim.DOWN * 0.05)
+            footer = self._caption(caption)
+            if footer.width > 12.2:
+                footer.scale_to_fit_width(12.2)
+            self.play(manim.Write(heading), manim.FadeIn(body), manim.FadeIn(footer))
+            self.wait(hold)
+            self.play(manim.FadeOut(heading), manim.FadeOut(body), manim.FadeOut(footer))
+
+        def _array_image(self, values: np.ndarray, height: float):
             values = np.asarray(values, dtype=float)
-            span = float(np.ptp(values))
-            normalized = (values - float(values.min())) / (span or 1.0)
-            points = [
-                np.array(
-                    [
-                        -width / 2 + width * i / max(1, len(values) - 1),
-                        -height / 2 + height * y,
-                        0,
-                    ]
-                )
-                for i, y in enumerate(normalized)
-            ]
-            line = manim.VMobject(color=manim.BLUE_C)
+            low, span = float(values.min()), float(np.ptp(values))
+            pixels = ((values - low) / (span or 1.0) * 255).astype(np.uint8)
+            mob = manim.ImageMobject(pixels)
+            mob.set_resampling_algorithm(manim.RESAMPLING_ALGORITHMS["nearest"])
+            mob.height = height
+            return mob
+
+        def _line(self, values, width, height, color, low=None, high=None):
+            values = np.asarray(values, dtype=float)
+            low = float(values.min()) if low is None else low
+            high = float(values.max()) if high is None else high
+            normalized = (values - low) / ((high - low) or 1.0)
+            points = [np.array([
+                -width / 2 + width * i / max(1, len(values) - 1),
+                -height / 2 + height * value, 0,
+            ]) for i, value in enumerate(normalized)]
+            line = manim.VMobject(color=color, stroke_width=2)
             line.set_points_as_corners(points)
             return line
+
+        def _profile_chart(self, raw, smooth, spacing, label, color):
+            raw = np.asarray(raw, dtype=float)
+            smooth = np.asarray(smooth, dtype=float)
+            low = float(min(raw.min(), smooth.min()))
+            high = float(max(raw.max(), smooth.max()))
+            width, height = 9.4, 1.25
+            frame = manim.Rectangle(width=width, height=height, stroke_opacity=0.35)
+            raw_line = self._line(raw, width, height, manim.GRAY_B, low, high)
+            smooth_line = self._line(smooth, width, height, color, low, high)
+            peaks = manim.VGroup()
+            for index in spacing.peaks:
+                x = -width / 2 + width * int(index) / max(1, len(smooth) - 1)
+                y = -height / 2 + height * (smooth[int(index)] - low) / ((high - low) or 1)
+                peaks.add(manim.Dot([x, y, 0], radius=0.045, color=manim.RED_C))
+            plot = manim.VGroup(frame, raw_line, smooth_line, peaks)
+            title = manim.Text(label, font_size=19)
+            return manim.VGroup(title, plot).arrange(manim.DOWN, buff=0.08)
+
+        def _candidate_panel(self, label: str, spacing: SpacingAnalysis):
+            def preview(values):
+                shown = [str(int(value)) for value in values[:12]]
+                rows = [", ".join(shown[index:index + 6])
+                        for index in range(0, len(shown), 6)]
+                value = "\n".join(rows) or "none"
+                if len(values) > 12:
+                    value += f"\n... ({len(values)} total)"
+                return value
+
+            gaps = preview(spacing.spacings)
+            peaks = preview(spacing.peaks)
+            lines = manim.VGroup(
+                manim.Text(label, font_size=25, weight="BOLD"),
+                manim.Text(
+                    f"distance >= {spacing.min_spacing}px\nprominence >= {spacing.min_prominence:.2f}",
+                    font_size=19, line_spacing=0.8,
+                ),
+                manim.Text(
+                    f"peak indices\n{peaks}",
+                    font_size=18, line_spacing=0.8,
+                ),
+                manim.Text(f"adjacent gaps\n{gaps}", font_size=18, line_spacing=0.8),
+            ).arrange(manim.DOWN, aligned_edge=manim.LEFT, buff=0.22)
+            return manim.SurroundingRectangle(lines, buff=0.22).add(lines)
+
+        def _confidence_panel(self, label: str, spacing: SpacingAnalysis):
+            counts = ", ".join(f"{gap}:{count}" for gap, count in spacing.spacing_counts)
+            counts = counts or "none"
+            total = len(spacing.spacings)
+            text = manim.VGroup(
+                manim.Text(label, font_size=24, weight="BOLD"),
+                manim.Text(f"gap counts  {counts}", font_size=18),
+                manim.Text(
+                    f"mode {spacing.selected_spacing}px +/- {spacing.tolerance}px\n"
+                    f"consistency {spacing.matching_count}/{total} = {spacing.spacing_consistency:.3f}",
+                    font_size=18, line_spacing=0.8,
+                ),
+                manim.Text(
+                    f"expected peaks {spacing.expected_peaks:.2f}\n"
+                    f"coverage {len(spacing.peaks)}/{spacing.expected_peaks:.2f} = {spacing.peak_coverage:.3f}",
+                    font_size=18, line_spacing=0.8,
+                ),
+                manim.Text(f"axis confidence {spacing.confidence:.3f}", font_size=22),
+            ).arrange(manim.DOWN, aligned_edge=manim.LEFT, buff=0.18)
+            return manim.SurroundingRectangle(text, buff=0.22).add(text)
+
+        def _phase_panel(self, label, offset, color):
+            scores = np.asarray(offset.scores, dtype=float)
+            maximum = float(scores.max()) if scores.size else 1.0
+            bars = manim.VGroup()
+            for index, score in enumerate(scores):
+                bar = manim.Rectangle(
+                    width=0.32, height=2.4 * float(score) / (maximum or 1.0),
+                    fill_opacity=0.85, stroke_width=0,
+                    color=manim.YELLOW if index == offset.selected_offset else color,
+                )
+                bars.add(bar)
+            bars.arrange(manim.RIGHT, aligned_edge=manim.DOWN, buff=0.07)
+            labels = manim.Text(
+                " ".join(str(i) for i in range(len(scores))), font_size=14
+            ).next_to(bars, manim.DOWN, buff=0.12)
+            title = manim.Text(
+                f"{label}: selected {offset.selected_offset}, score {offset.selected_score:.2f}",
+                font_size=21,
+            )
+            return manim.VGroup(title, bars, labels).arrange(manim.DOWN, buff=0.15)
+
+        def _grid_overlay(self, picture, image_size, grid_w, grid_h, phase_x, phase_y):
+            overlay = manim.VGroup()
+            if grid_w <= 0 or grid_h <= 0:
+                return overlay
+            image_w, image_h = image_size
+            left, right = picture.get_left()[0], picture.get_right()[0]
+            bottom, top = picture.get_bottom()[1], picture.get_top()[1]
+            for x in range(phase_x, image_w, grid_w):
+                sx = left + (x / image_w) * (right - left)
+                overlay.add(manim.Line([sx, bottom, 0], [sx, top, 0],
+                                       color=manim.RED, stroke_width=1))
+            for y in range(phase_y, image_h, grid_h):
+                sy = top - (y / image_h) * (top - bottom)
+                overlay.add(manim.Line([left, sy, 0], [right, sy, 0],
+                                       color=manim.RED, stroke_width=1))
+            return overlay
 
         def _show_sampling(self, step: WalkthroughStep) -> None:
             heading = self._heading(step.title)
@@ -318,7 +484,10 @@ def render_walkthrough(
                 ]
             )
             color = step.details["sampled_color"]
-            caption = self._caption(f"local 3 x 3 median -> output colour {color}")
+            method = step.details["sample_method"]
+            caption = self._caption(
+                f"local 3 x 3 {method} -> output colour {color}"
+            )
             labels = manim.VGroup(
                 manim.Text("source cells", font_size=22).next_to(source, manim.DOWN),
                 manim.Text("one pixel per cell", font_size=22).next_to(

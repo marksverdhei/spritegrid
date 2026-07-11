@@ -7,8 +7,7 @@ from PIL import Image, ImageDraw
 
 from spritegrid.segmentation import make_background_transparent
 
-from .detection import detect_grid_with_offset
-from .detection import compute_gradient_profiles
+from .detection import analyze_grid, detect_grid_with_offset
 from .utils import (
     convert_image_to_ascii,
     convert_image_to_halfblock,
@@ -150,7 +149,7 @@ def create_downsampled_image(
     offset_y: int = 0,
 ) -> Image.Image:
     """
-    Creates a new image by sampling the geometric median pixel of each grid cell
+    Creates a new image by sampling the selected median pixel of each grid cell
     from the original image and quantizing the colors.
 
     Args:
@@ -161,6 +160,7 @@ def create_downsampled_image(
         num_cells_h: The number of grid cells vertically.
         bit: Number of bits per color channel.
         kernel_size: Size of the kernel to sample from (width, height).
+        median_type: ``naive`` for a channel-wise median, otherwise geometric median.
         offset_x: Horizontal grid translation in pixels (shifts sample centres right).
         offset_y: Vertical grid translation in pixels (shifts sample centres down).
 
@@ -189,8 +189,10 @@ def create_downsampled_image(
             f"Kernel size ({kernel_w}x{kernel_h}) cannot be larger than grid cell size ({grid_w}x{grid_h})"
         )
 
+    median_label = "channel-wise" if median_type == "naive" else "geometric"
     print(
-        f"Creating downsampled image ({num_cells_w}x{num_cells_h}) using geometric median of {kernel_w}x{kernel_h} kernel..."
+        f"Creating downsampled image ({num_cells_w}x{num_cells_h}) using "
+        f"{median_label} median of {kernel_w}x{kernel_h} kernel..."
     )
 
     # Use a mode that supports transparency if the original has it (e.g., PNG)
@@ -539,9 +541,14 @@ def main(
         )
 
     # Call the grid detection function from the detection module
-    detected_w, detected_h, auto_offset_x, auto_offset_y = detect_grid_with_offset(
-        image, min_grid_size=min_grid
-    )
+    grid_analysis = None
+    if trace is not None:
+        grid_analysis = analyze_grid(image, min_grid_size=min_grid, report=True)
+        detected_w, detected_h, auto_offset_x, auto_offset_y = grid_analysis.result
+    else:
+        detected_w, detected_h, auto_offset_x, auto_offset_y = detect_grid_with_offset(
+            image, min_grid_size=min_grid
+        )
     # Apply manual offset if provided; auto-detected offset only if --auto-offset is set
     if offset is not None:
         offset_x, offset_y = offset
@@ -556,16 +563,11 @@ def main(
     if trace is not None:
         from .walkthrough import record_grid_discovery
 
-        profile_h, profile_v = compute_gradient_profiles(image)
+        assert grid_analysis is not None
         record_grid_discovery(
             trace,
             image,
-            profile_h,
-            profile_v,
-            detected_w,
-            detected_h,
-            auto_offset_x,
-            auto_offset_y,
+            grid_analysis,
             offset_x,
             offset_y,
         )
