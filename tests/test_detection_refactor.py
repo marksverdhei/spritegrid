@@ -12,6 +12,9 @@ import numpy as np
 from PIL import Image
 
 from spritegrid.detection import (
+    analyze_dominant_spacing,
+    analyze_grid,
+    analyze_grid_offset,
     compute_gradient_profiles,
     detect_grid,
     detect_grid_from_profiles,
@@ -57,6 +60,39 @@ class TestDecompositionIsExact:
         assert detect_grid_from_profiles(np.zeros(5), np.zeros(5), min_grid_size=4) == (
             0, 0, 0, 0
         )
+
+    def test_spacing_diagnostics_are_the_canonical_result(self):
+        profile = np.array([0, 9, 0, 0, 0, 8, 0, 0, 0, 10, 0], dtype=float)
+        analysis = analyze_dominant_spacing(profile, min_spacing=3)
+        assert (analysis.selected_spacing, analysis.confidence) == (4, 1.0)
+        np.testing.assert_array_equal(analysis.peaks, [1, 5, 9])
+        np.testing.assert_array_equal(analysis.spacings, [4, 4])
+        assert analysis.spacing_counts == ((4, 2),)
+
+    def test_phase_diagnostics_are_the_canonical_result(self):
+        profile = np.array([1, 2, 8, 1, 3, 9, 1, 2, 7], dtype=float)
+        analysis = analyze_grid_offset(profile, 3)
+        np.testing.assert_array_equal(analysis.scores, [3, 7, 24])
+        assert analysis.selected_offset == 2
+        assert analysis.selected_score == 24
+
+    def test_image_analysis_matches_public_detector_exactly(self):
+        image = _make_grid_image(8, 10, 10, offset_x=2, offset_y=3)
+        analysis = analyze_grid(image)
+        assert analysis.result == detect_grid_with_offset(image)
+        assert analysis.signals is not None
+        np.testing.assert_array_equal(
+            analysis.horizontal.profile, analysis.signals.profile_h
+        )
+        np.testing.assert_array_equal(
+            analysis.vertical.profile, analysis.signals.profile_v
+        )
+
+    def test_rejection_reason_is_recorded(self):
+        image = Image.fromarray(np.full((64, 64, 3), 128, dtype=np.uint8))
+        analysis = analyze_grid(image)
+        assert analysis.result == (0, 0, 0, 0)
+        assert analysis.rejection_reason == "spacing_not_found"
 
 
 class TestBackwardCompatibility:

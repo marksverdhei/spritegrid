@@ -30,6 +30,30 @@ pip install spritegrid
 spritegrid ai_pixelart.png -o clean_sprite.png
 ```
 
+### Animated transformation walkthroughs
+
+Install the optional Manim renderer and ask SpriteGrid for an explanatory MP4:
+
+```bash
+pip install "spritegrid[walkthrough]"
+spritegrid ai_pixelart.png \
+  -b after --res 256x256 \
+  -o clean_sprite.png \
+  --walkthrough transformation.mp4
+```
+
+The video follows the real still-image pipeline. Grid discovery is shown from
+the detector's own canonical diagnostics: grayscale conversion, adjacent-pixel
+gradients, axis sums, Gaussian smoothing, peak detection, local peak-to-peak
+spacing candidates, modal-spacing confidence, acceptance gates, and the complete
+phase scan. It then shows the exact local colour-sampling kernel, optional
+background removal, optional crop/symmetry, and nearest-neighbour resizing.
+
+The renderer does not reimplement grid detection. The normal detector produces
+the result and the diagnostics together in one pass, and the video only draws
+those recorded values. Enabling a walkthrough therefore cannot change the output
+pixels. Animation inputs are not yet supported by `--walkthrough`.
+
 ---
 
 ## ComfyUI Node

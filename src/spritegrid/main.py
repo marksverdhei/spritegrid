@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw
 
 from spritegrid.segmentation import make_background_transparent
 
-from .detection import detect_grid_with_offset
+from .detection import analyze_grid, detect_grid_with_offset
 from .utils import (
     convert_image_to_ascii,
     convert_image_to_halfblock,
@@ -149,7 +149,7 @@ def create_downsampled_image(
     offset_y: int = 0,
 ) -> Image.Image:
     """
-    Creates a new image by sampling the geometric median pixel of each grid cell
+    Creates a new image by sampling the selected median pixel of each grid cell
     from the original image and quantizing the colors.
 
     Args:
@@ -160,6 +160,7 @@ def create_downsampled_image(
         num_cells_h: The number of grid cells vertically.
         bit: Number of bits per color channel.
         kernel_size: Size of the kernel to sample from (width, height).
+        median_type: ``naive`` for a channel-wise median, otherwise geometric median.
         offset_x: Horizontal grid translation in pixels (shifts sample centres right).
         offset_y: Vertical grid translation in pixels (shifts sample centres down).
 
@@ -188,8 +189,10 @@ def create_downsampled_image(
             f"Kernel size ({kernel_w}x{kernel_h}) cannot be larger than grid cell size ({grid_w}x{grid_h})"
         )
 
+    median_label = "channel-wise" if median_type == "naive" else "geometric"
     print(
-        f"Creating downsampled image ({num_cells_w}x{num_cells_h}) using geometric median of {kernel_w}x{kernel_h} kernel..."
+        f"Creating downsampled image ({num_cells_w}x{num_cells_h}) using "
+        f"{median_label} median of {kernel_w}x{kernel_h} kernel..."
     )
 
     # Use a mode that supports transparency if the original has it (e.g., PNG)
@@ -491,17 +494,23 @@ def main(
     compare: bool = False,
     offset: Optional[Tuple[int, int]] = None,
     auto_offset: bool = False,
+    walkthrough_video: Optional[str] = None,
 ) -> None:
     """
     Main function to parse arguments, load image, detect grid, and generate output/debug image.
     """
     debug_image = None
+    trace = None
+    if walkthrough_video is not None:
+        from .walkthrough import WalkthroughTrace
+
+        trace = WalkthroughTrace(image_source)
 
     if remove_background == "default":
         remove_background = "after"
 
     # Info message if no primary output action selected (and not in debug mode)
-    if not debug and not output_file and not show:
+    if not debug and not output_file and not show and walkthrough_video is None:
         print(
             "Info: No output option (-o or -i) selected for downsampled image. Only detection results will be printed.",
             file=sys.stderr,
@@ -510,21 +519,36 @@ def main(
     print(f"Loading image from: {image_source}")
     image = load_image(image_source)
 
-    if remove_background == "before":
-        image = make_background_transparent(image, debug=False)[0]
-
     if image is None:
         sys.exit(1)
+
+    if trace is not None:
+        trace.add("load", "Load the source image", image)
+
+    if remove_background == "before":
+        image = make_background_transparent(image, debug=False)[0]
 
     print(
         f"Image loaded successfully ({image.width}x{image.height}, Mode: {image.mode})."
     )
 
-    # Call the grid detection function from the detection module
-    detected_w, detected_h, auto_offset_x, auto_offset_y = detect_grid_with_offset(
-        image, min_grid_size=min_grid
-    )
+    if trace is not None and remove_background == "before":
+        trace.add(
+            "background",
+            "Remove the background before detection",
+            image,
+            caption="segmentation produces the transparency used for grid detection",
+        )
 
+    # Call the grid detection function from the detection module
+    grid_analysis = None
+    if trace is not None:
+        grid_analysis = analyze_grid(image, min_grid_size=min_grid, report=True)
+        detected_w, detected_h, auto_offset_x, auto_offset_y = grid_analysis.result
+    else:
+        detected_w, detected_h, auto_offset_x, auto_offset_y = detect_grid_with_offset(
+            image, min_grid_size=min_grid
+        )
     # Apply manual offset if provided; auto-detected offset only if --auto-offset is set
     if offset is not None:
         offset_x, offset_y = offset
@@ -535,6 +559,18 @@ def main(
             print(f"Auto-detected grid offset: ({offset_x}, {offset_y})")
     else:
         offset_x, offset_y = 0, 0
+
+    if trace is not None:
+        from .walkthrough import record_grid_discovery
+
+        assert grid_analysis is not None
+        record_grid_discovery(
+            trace,
+            image,
+            grid_analysis,
+            offset_x,
+            offset_y,
+        )
 
     # Check the results returned by detect_grid
     if detected_w > 0 and detected_h > 0:
@@ -585,6 +621,19 @@ def main(
                 offset_y=offset_y,
             )
 
+            if trace is not None:
+                from .walkthrough import record_sampling
+
+                record_sampling(
+                    trace,
+                    image,
+                    output_image,
+                    detected_w,
+                    detected_h,
+                    offset_x,
+                    offset_y,
+                )
+
             if remove_background == "after":
                 print("Removing background from the downsampled image...")
                 # Call the background removal function
@@ -592,28 +641,51 @@ def main(
                     output_image, debug=True
                 )
                 print("Background removed successfully.")
+                if trace is not None:
+                    trace.add(
+                        "background",
+                        "Remove the background after sampling",
+                        output_image,
+                        caption="segmentation marks the dominant region transparent",
+                    )
 
             # Apply symmetry enforcement if requested
             if symmetric:
                 print("Enforcing horizontal symmetry...")
                 output_image = enforce_symmetry(output_image)
                 print("Symmetry enforced.")
+                if trace is not None:
+                    trace.add("symmetry", "Enforce horizontal symmetry", output_image)
 
             # Apply automatic cropping if requested
             if crop and output_image.mode == "RGBA":
                 print("Automatically cropping the image to non-transparent content...")
                 output_image = crop_to_content(output_image)
                 print(f"Image cropped to {output_image.width}x{output_image.height}")
+                if trace is not None:
+                    trace.add("crop", "Crop to visible content", output_image)
 
             # Apply custom resolution (--res) — takes precedence over --aspectratio
             if res is not None:
                 output_image = apply_resolution(output_image, res)
+                if trace is not None:
+                    trace.add(
+                        "resize",
+                        "Upscale with nearest-neighbour sampling",
+                        output_image,
+                        caption=f"nearest-neighbour resize -> {output_image.width} x {output_image.height}",
+                    )
             elif aspect_ratio is not None:
                 output_image = apply_aspect_ratio(output_image, aspect_ratio)
+                if trace is not None:
+                    trace.add(
+                        "aspect", "Crop to the requested aspect ratio", output_image
+                    )
 
         if compare and not debug and not is_already_clean:
             print("\n--- Generating Before/After Comparison ---")
             comparison = create_comparison_image(image, output_image)
+            walkthrough_final = comparison
             handle_output(
                 comparison,
                 output_file,
@@ -624,8 +696,9 @@ def main(
                 halfblock=halfblock,
             )
         elif debug:
+            walkthrough_final = output_image
             handle_output(
-                debug_image,
+                output_image,
                 output_file,
                 show,
                 is_debug=True,
@@ -634,6 +707,7 @@ def main(
                 halfblock=halfblock,
             )
         else:
+            walkthrough_final = output_image
             handle_output(
                 output_image,
                 output_file,
@@ -643,6 +717,14 @@ def main(
                 ascii_space_width=ascii_space_width,
                 halfblock=halfblock,
             )
+
+        if trace is not None:
+            trace.add("final", "Final pixel-identical output", walkthrough_final)
+            from .walkthrough import render_walkthrough
+
+            print(f"Rendering Manim walkthrough to: {walkthrough_video}")
+            render_walkthrough(trace, walkthrough_video)
+            print("Walkthrough rendered successfully.")
 
     else:
         # No grid detected - image is likely already clean pixel art
@@ -657,3 +739,10 @@ def main(
             ascii_space_width=ascii_space_width,
             halfblock=halfblock,
         )
+        if trace is not None:
+            trace.add("final", "No grid: return the source unchanged", image)
+            from .walkthrough import render_walkthrough
+
+            print(f"Rendering Manim walkthrough to: {walkthrough_video}")
+            render_walkthrough(trace, walkthrough_video)
+            print("Walkthrough rendered successfully.")

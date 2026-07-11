@@ -29,6 +29,15 @@ from spritegrid.crop_and_scale import (
     batch_process,
 )
 from spritegrid.detection import (
+    GradientAnalysis,
+    SpacingAnalysis,
+    OffsetAnalysis,
+    GridDetectionAnalysis,
+    analyze_gradient_profiles,
+    analyze_dominant_spacing,
+    analyze_grid_offset,
+    analyze_grid_from_profiles,
+    analyze_grid,
     detect_grid,
     detect_grid_with_offset,
     detect_grid_across_frames,
@@ -42,6 +51,13 @@ from spritegrid.animation import (
     process_animation,
     is_animated_source,
 )
+from spritegrid.walkthrough import (
+    WalkthroughStep,
+    WalkthroughTrace,
+    record_grid_discovery,
+    record_sampling,
+    render_walkthrough,
+)
 
 __all__ = [
     "process_sprite",
@@ -51,6 +67,15 @@ __all__ = [
     "crop_and_scale_centered",
     "batch_process",
     # Grid detection
+    "GradientAnalysis",
+    "SpacingAnalysis",
+    "OffsetAnalysis",
+    "GridDetectionAnalysis",
+    "analyze_gradient_profiles",
+    "analyze_dominant_spacing",
+    "analyze_grid_offset",
+    "analyze_grid_from_profiles",
+    "analyze_grid",
     "detect_grid",
     "detect_grid_with_offset",
     "detect_grid_across_frames",
@@ -62,4 +87,10 @@ __all__ = [
     "process_frames",
     "process_animation",
     "is_animated_source",
+    # Optional Manim walkthroughs (Manim is imported lazily when rendering)
+    "WalkthroughStep",
+    "WalkthroughTrace",
+    "record_grid_discovery",
+    "record_sampling",
+    "render_walkthrough",
 ]
