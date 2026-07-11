@@ -93,6 +93,18 @@ class TestAnsiFlags:
         assert "only supported for still images" in capsys.readouterr().err
 
 
+class TestWalkthroughFlag:
+    def test_walkthrough_is_rejected_for_animations(self, tmp_path, capsys):
+        src = tmp_path / "animated.gif"
+        save_frames(_grid_frames(2), str(src))
+
+        with pytest.raises(SystemExit) as exc:
+            _run_cli([str(src), "--walkthrough", str(tmp_path / "guide.mp4")])
+
+        assert exc.value.code == 2
+        assert "currently supports still images only" in capsys.readouterr().err
+
+
 class TestClassifier:
     def test_directory_is_animated(self, tmp_path):
         d = tmp_path / "frames"

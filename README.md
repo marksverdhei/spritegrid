@@ -30,6 +30,25 @@ pip install spritegrid
 spritegrid ai_pixelart.png -o clean_sprite.png
 ```
 
+### Animated transformation walkthroughs
+
+Install the optional Manim renderer and ask SpriteGrid for an explanatory MP4:
+
+```bash
+pip install "spritegrid[walkthrough]"
+spritegrid ai_pixelart.png \
+  -b after --res 256x256 \
+  -o clean_sprite.png \
+  --walkthrough transformation.mp4
+```
+
+The video follows the real still-image pipeline: image loading, horizontal and
+vertical local grid-candidate profiles, selected grid and phase, an exact local
+colour-sampling kernel, optional background removal, optional crop/symmetry, and
+nearest-neighbour resizing. The recorder only copies intermediate images after
+each normal transformation, so enabling a walkthrough cannot change the output
+pixels. Animation inputs are not yet supported by `--walkthrough`.
+
 ---
 
 ## ComfyUI Node

@@ -42,6 +42,13 @@ from spritegrid.animation import (
     process_animation,
     is_animated_source,
 )
+from spritegrid.walkthrough import (
+    WalkthroughStep,
+    WalkthroughTrace,
+    record_grid_discovery,
+    record_sampling,
+    render_walkthrough,
+)
 
 __all__ = [
     "process_sprite",
@@ -62,4 +69,10 @@ __all__ = [
     "process_frames",
     "process_animation",
     "is_animated_source",
+    # Optional Manim walkthroughs (Manim is imported lazily when rendering)
+    "WalkthroughStep",
+    "WalkthroughTrace",
+    "record_grid_discovery",
+    "record_sampling",
+    "render_walkthrough",
 ]

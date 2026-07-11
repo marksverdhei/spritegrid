@@ -173,6 +173,17 @@ def parse_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "--walkthrough",
+        metavar="VIDEO.mp4",
+        default=None,
+        help=(
+            "Still images only: render an animated Manim walkthrough of grid "
+            "discovery, local colour sampling, background removal, and resizing. "
+            "Requires the optional 'walkthrough' extra."
+        ),
+    )
+
+    parser.add_argument(
         "--offset",
         type=parse_size,
         metavar="XxY",
@@ -241,6 +252,12 @@ def cli() -> None:
     from .animation import is_animated_source
 
     if is_animated_source(args.image_source):
+        if args.walkthrough is not None:
+            print(
+                "Error: --walkthrough currently supports still images only.",
+                file=sys.stderr,
+            )
+            sys.exit(2)
         if args.ascii is not None or args.halfblock:
             print(
                 "Error: --ascii and --halfblock are only supported for still images.",
@@ -271,6 +288,15 @@ def cli() -> None:
             sys.exit(1)
         return
 
+    if args.walkthrough is not None:
+        from .walkthrough import _require_manim
+
+        try:
+            _require_manim()
+        except RuntimeError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            sys.exit(1)
+
     main(
         image_source=args.image_source,
         min_grid=args.min_grid,
@@ -288,6 +314,7 @@ def cli() -> None:
         compare=args.compare,
         offset=args.offset,
         auto_offset=args.auto_offset,
+        walkthrough_video=args.walkthrough,
     )
 
 
